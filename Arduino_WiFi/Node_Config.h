@@ -2,34 +2,15 @@
 uint16_t AnalogValue      = 632;            // AnalogRead from ref. voltage
 uint16_t ActualVolt       = 408;            // Actual voltage at Battery from multi-meter x 100, e.g. 3.96 -> 396
 
-#if (DEV_PROFILE == 0)
-  #define Device_Profile        "3G"        // 3G profile parameter
-  const uint8_t ModemWaitTime   = 10;       // wait for modem to power-up
-  const uint8_t ModemPwrUpTime  = 75;       // total modem power-up time 75s
-  const uint8_t CMDdelayTime    = 5;        // delay time after wifi connected
-  const uint16_t WakeUpInterval = 300;      // device wake-up every 5min
-  const uint8_t TxiNET_LowBatt  = 120;      // Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
-  const uint8_t TxiNET_Normal   = 6;        // Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
-#elif (DEV_PROFILE == 1)
-  #define Device_Profile        "WL"        // use WiFi Profile
-  const uint8_t ModemWaitTime   = 0;        // wait for modem to power-up
-  const uint8_t ModemPwrUpTime  = 50;       // total modem power-up time 50s
-  const uint8_t CMDdelayTime    = 0;        // delay time after wifi connected
-  const uint16_t WakeUpInterval = 60;       // device wake-up every 60s
-  const uint8_t TxiNET_LowBatt  = 60;       // Send data to internet every 60min (WakeUpInterval x TxiNET_Normal)
-  const uint8_t TxiNET_Normal   = 5;        // Send data to internet every 5min (WakeUpInterval x TxiNET_Normal)
-#else
-  #define Device_Profile        "WL"        // use WiFi Profile as Default
-  const uint8_t ModemWaitTime   = 2;        // wait for modem to power-up
-  const uint8_t ModemPwrUpTime  = 50;       // total modem power-up time 50s
-  const uint8_t CMDdelayTime    = 0;        // delay time after wifi connected
-  const uint16_t WakeUpInterval = 60;       // device wake-up every 60s
-  const uint8_t TxiNET_LowBatt  = 60;       // Send data to internet every 60min (WakeUpInterval x TxiNET_Normal)
-  const uint8_t TxiNET_Normal   = 5;        // Send data to internet every 5min (WakeUpInterval x TxiNET_Normal)
-#endif
-const uint32_t MAX10dACnt       = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
+String Device_Profile   = "3G";         // 3G profile parameter
+uint8_t ModemWaitTime   = 10;           // wait for modem to power-up
+uint8_t ModemPwrUpTime  = 75;           // total modem power-up time 75s
+uint8_t CMDdelayTime    = 5;            // delay time after wifi connected
+uint16_t WakeUpInterval = 300;          // device wake-up every 5min
+uint8_t TxiNET_LowBatt  = 120;          // Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
+uint8_t TxiNET_Normal   = 6;            // Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
+uint32_t MAX10dACnt     = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
 
-// const char* GScriptId =     "AKfycbwsHmgPTCrc8JRwAdWvSqUatsmOEFPlGfcZWmVx8EATTYjF1i57";   // Kai-3G Google Script id
 // 3G-WiFi Modem info:
 // ssid/pass: IOT-0001D001-3G, DHCP-Off
 // url:192.168.8.1, user: admin, pass:admin
@@ -42,6 +23,7 @@ const uint8_t SR04_ECHOpin    = 4;
 const uint8_t Sensor_Dpin     = A1;
 const uint8_t Sensor_ENpin    = 11;
 const uint8_t BattMeasurepin  = A2;
+const uint8_t Profile_SEL_Pin = 6;            // Profile Select: 0-3G, 1-WiFi
 
 const uint8_t ESP_RxPin       = 7;            // to ESP Tx
 const uint8_t ESP_TxPin       = 8;            // to ESP Rx

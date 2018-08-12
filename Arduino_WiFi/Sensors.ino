@@ -124,15 +124,7 @@ uint16_t getDistanceSR04() {                          // Get distance (mm), sing
   delayMicroseconds(120);                             // delay at least 2cm (120 us pulse)
   pulse_width = pulseIn(SR04_ECHOpin, HIGH, 23200);   // Returns the pulse width in uS or 0 if over 400 cm (23200 us pulse)
   result = (uint16_t)(((float)pulse_width)/58.2);     // return distance, cm
-
-//==================================== Dummy Code ====================================
-  tempDistanceSR04 += (random(0, 20) - 10);
-  if (tempDistanceSR04 < 5) tempDistanceSR04 = 0;
-  if (tempDistanceSR04 > 300) tempDistanceSR04 = 300;
-  return tempDistanceSR04;
-//====================================================================================
-
-  if (inRange(result, 5, 300)) return result;         // valid distance is 5-300cm 
+  if (inRange(result, 3, 400)) return result;         // valid distance is 3-400cm 
   return 0;
 }
 

@@ -23,10 +23,6 @@ void updateData (void) {      // true: update success
   TxData.RainCount        = RainCount;
   iNetTx.RainCount = (uint16_t)(calcRainMM(TxData.RainCount) * 10);    // RainMM x10
   
-//==================================== Dummy Code ====================================
-  iNetTx.RainCount = random(0, 50);
-//====================================================================================
-
 #if (SENSOR_RAIN == 1)
   sendURL += uint16_t2HEX (iNetTx.RainCount);
 #else

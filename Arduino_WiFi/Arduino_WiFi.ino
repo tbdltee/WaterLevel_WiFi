@@ -1,5 +1,4 @@
 #define BattCalibrate       0               // Show A2Value for Battery Voltage Calibration
-#define DEV_PROFILE         0               // 0:3G, 1:WiFi
 #define stDEBUG             0               // Show Debug message
 #define SENSOR_W            1               // Weather Sensor:    0-not present, 1-SHT31, 2-BME280
 #define SENSOR_RAIN         1               // Rain Gauge Sensor: 0-not present, 1-present
@@ -43,8 +42,6 @@ uint8_t nonRapidcnt   = 0;                    // Counter of consecutive non-rapi
 uint32_t wakeup_time  = 0;
 String iNETSerialmsg  = "";
 
-uint16_t tempDistanceSR04 = 100;
-
 NeoSWSerial iNETSerial(ESP_RxPin, ESP_TxPin); // RX, TX
 
 void(* resetFunc) (void) = 0;                 //declare reset function @address 0
@@ -56,21 +53,35 @@ void setup() {
 # if ((stDEBUG + BattCalibrate) > 0)
   Serial.begin(57600);
 #endif
-
-  printDEBUG ("[S] ================ SYSTEM INIT ================");
+  pinMode (Profile_SEL_Pin,  INPUT_PULLUP);
+  
   pinMode (ESP_ENpin, OUTPUT);
   digitalWrite(ESP_ENpin, LOW);               // disable ESP8266
   pinMode (MODEM_ENpin, OUTPUT);
   digitalWrite(MODEM_ENpin, LOW);             // disable 3G/4G modem
   pinMode (Sensor_ENpin, OUTPUT);
   digitalWrite(Sensor_ENpin, LOW);
-  randomSeed(get_rand_byte());
-  iNetTx.seqNr = random(65536);
-  
-  iNETSerial.begin(19200);
-  delay (200);
   pinMode (LED_BUILTIN, OUTPUT);
   LEDoff();
+
+  if (digitalRead (Profile_SEL_Pin) == LOW) { // chage from 3G to WiFi
+    Device_Profile  = "WL";     // use WiFi Profile
+    ModemWaitTime   = 0;        // wait for modem to power-up
+    ModemPwrUpTime  = 50;       // total modem power-up time 50s
+    CMDdelayTime    = 0;        // delay time after wifi connected
+    WakeUpInterval  = 60;       // device wake-up every 60s
+    TxiNET_LowBatt  = 60;       // Send data to internet every 60min (WakeUpInterval x TxiNET_Normal)
+    TxiNET_Normal   = 5;        // Send data to internet every 5min (WakeUpInterval x TxiNET_Normal)
+    MAX10dACnt      = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
+    printDEBUG (F("[S] ========== SYSTEM INIT (WiFi Profile) =========="));
+  } else {
+    printDEBUG (F("[S] ========== SYSTEM INIT (3G Profile) =========="));
+  }
+  
+  randomSeed(get_rand_byte());
+  iNetTx.seqNr = random(65536);
+  iNETSerial.begin(19200);
+  delay (200);
   Init_Peripheral();
   Initialize_wdt();                           // configure with reset interval 1 sec and start the watchdog.
   resetTxData ();
@@ -123,17 +134,17 @@ void loop(void) {
 }
 
 void resetTxData (void) {
-  iNetTx.LvErrType        = 1;
-  iNetTx.distanceCM       = 0;
-  iNetTx.TempC            = 127;
-  iNetTx.RH               = 127;
-  iNetTx.RainCount        = 0;
-  iNetTx.LvSampleRead     = 0;
-  iNetTx.iNETattempt      = 0;
-  iNetTx.iNETDNSfail   = 0;
-  iNetTx.iNETSentfail  = 0;
-  iNetTx.iNETWififail  = 0;
-  iNetTx.iNETHostfail  = 0;
+  iNetTx.LvErrType      = 1;
+  iNetTx.distanceCM     = 0;
+  iNetTx.TempC          = 127;
+  iNetTx.RH             = 127;
+  iNetTx.RainCount      = 0;
+  iNetTx.LvSampleRead   = 0;
+  iNetTx.iNETattempt    = 0;
+  iNetTx.iNETDNSfail    = 0;
+  iNetTx.iNETSentfail   = 0;
+  iNetTx.iNETWififail   = 0;
+  iNetTx.iNETHostfail   = 0;
   if ((sysPara.NodeStatus & 0x40) == 0) iNetTx.iNETNoResp = 0;
 }
 
