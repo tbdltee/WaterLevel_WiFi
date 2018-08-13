@@ -9,7 +9,7 @@ uint8_t CMDdelayTime    = 5;            // delay time after wifi connected
 uint16_t WakeUpInterval = 300;          // device wake-up every 5min
 uint8_t TxiNET_LowBatt  = 120;          // Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
 uint8_t TxiNET_Normal   = 6;            // Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
-uint32_t MAX10dACnt     = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
+uint32_t T10dayCnt      = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
 
 // 3G-WiFi Modem info:
 // ssid/pass: IOT-0001D001-3G, DHCP-Off
@@ -30,8 +30,6 @@ const uint8_t ESP_TxPin       = 8;            // to ESP Rx
 const uint8_t ESP_ENpin       = 9;            // ESP enabled (CHPD pin)
 const uint8_t MODEM_ENpin     = 10;           // 3G/4G enable pin
 
-const float RainMMperTip      = (14.0/55.0);  // rain volume per tip, ml. x 10/sq.cm. of Rain measurement bucket
-
 // ============================= Threshold =============================
 const uint8_t BATTPowerSave   = 15;           // %Batt to operate in power save: TxInterval = 4 min
 const uint8_t BATTPowerOff    = 5;            // %Batt to operate in power off
@@ -43,7 +41,7 @@ struct sysParaType {                          // system parameters
   String DevID            = String(Device_GroupID) + String(Device_ID);
   String  ssid            = "";
   String  pass            = "";
-  uint8_t NodeStatus      = 0x80;             // Node Status: 7654 3210, 7:node reboot, 6:Rain Sensor, 5:Weather sensor, 4:reserve, 3:Rapid Update, 2:Server-No response, 1/0: Send retry
+  uint8_t NodeStatus      = 0x80;             // Node Status: 7654 3210, 7:node reboot, 6:Rain Sensor, 5:Weather sensor, 4:reserved, 3:Rapid Update, 2:Server-No response, 1/0: Send retry
   uint32_t AvalueCnt      = 0;                // Avalue counter, 1 cnt every 1665ms
   uint16_t maxA10d        = 0;                // max Avalue during 10days period
   uint16_t WiFiConfTime   = 600;              // Wifi Config mode time-out, 5 min. Allow only after Arduino reset
@@ -52,17 +50,17 @@ struct sysParaType {                          // system parameters
 struct NodeDataType {
   uint16_t lastCM         = 0;                // lastast distanceCM
   uint8_t distanceIdx     = 0;                // index of distanceMM[]
-  uint16_t RainCount      = 0;                // Rain Count
+  uint16_t accRainCount   = 0;                // accumulated rain counter
   uint16_t distanceCM[10] = { 0,0,0,0,0,0,0,0,0,0 };
 } TxData;
 
 struct iNetType {                 // data to send to Host
   uint8_t BattLvl       = 0;      // battery level 0..100
-  uint8_t LvErrType     = 1;      // Error type 0-no error, 1-no data, 2-too few sample, 3-toohigh stdDV
+  uint8_t LvErrType     = 1;      // Error type 0-no error, 1-no data, 2-too few sample, 3-too high stdDV
   uint16_t distanceCM   = 0;
   uint8_t TempC         = 127;
   uint8_t RH            = 127;
-  uint16_t RainCount    = 0;
+  uint16_t accRainCount = 0;      // accumulated rain counter 0..0x7FFF + overflow flag (0x8000)
   uint16_t seqNr        = 0;      // iNET sequence number
   
   uint8_t LvSampleRead   = 0;     // #Read of Distance Sensor

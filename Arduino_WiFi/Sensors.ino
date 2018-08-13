@@ -27,7 +27,7 @@ void Init_Peripheral() {
 #else
   printDEBUG ("[S] Rain Gauge..not found.");
 #endif
-  printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) +"s, MAX10dACNT: " + String(MAX10dACnt) + "\r\n");
+  printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) +"s, T10dayCnt: " + String(T10dayCnt) + "\r\n");
 }
 
 uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
@@ -54,7 +54,7 @@ uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
     ActualVolt      = 420;
   }
   
-  if (sysPara.AvalueCnt == MAX10dACnt) {        // 10 days reached
+  if (sysPara.AvalueCnt == T10dayCnt) {        // 10 days reached
     if (sysPara.maxA10d > 0) {
       AnalogValue     = sysPara.maxA10d;
       ActualVolt      = 420;

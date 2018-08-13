@@ -72,7 +72,7 @@ void setup() {
     WakeUpInterval  = 60;       // device wake-up every 60s
     TxiNET_LowBatt  = 60;       // Send data to internet every 60min (WakeUpInterval x TxiNET_Normal)
     TxiNET_Normal   = 5;        // Send data to internet every 5min (WakeUpInterval x TxiNET_Normal)
-    MAX10dACnt      = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
+    T10dayCnt       = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
     printDEBUG (F("[S] ========== SYSTEM INIT (WiFi Profile) =========="));
   } else {
     printDEBUG (F("[S] ========== SYSTEM INIT (3G Profile) =========="));
@@ -138,7 +138,6 @@ void resetTxData (void) {
   iNetTx.distanceCM     = 0;
   iNetTx.TempC          = 127;
   iNetTx.RH             = 127;
-  iNetTx.RainCount      = 0;
   iNetTx.LvSampleRead   = 0;
   iNetTx.iNETattempt    = 0;
   iNetTx.iNETDNSfail    = 0;
@@ -179,10 +178,6 @@ String getValue(String data, char separator, int index) {
     }
   }
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
-}
-
-float calcRainMM (uint16_t RainCount) {
-  return (float)(RainCount) * RainMMperTip;
 }
 
 uint16_t calcSleepTime (void) {                   // calculate sleep time (sec) to prevent wake-up time > WakeUpInterval, e.g OTA

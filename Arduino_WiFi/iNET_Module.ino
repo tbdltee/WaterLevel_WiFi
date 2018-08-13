@@ -19,12 +19,15 @@ void updateData (void) {      // true: update success
 #else
   sendURL += "FFFF";
 #endif
-  
-  TxData.RainCount        = RainCount;
-  iNetTx.RainCount = (uint16_t)(calcRainMM(TxData.RainCount) * 10);    // RainMM x10
+
+  uint16_t sendRainCnt  = RainCount;                    // freeze RainCount value
+  TxData.accRainCount  += sendRainCnt;                  // accumulated rain counter
+  iNetTx.accRainCount   = TxData.accRainCount;          // 0x8000 is overflow flag
+  TxData.accRainCount   = iNetTx.accRainCount & 0x7FFF; // clear overflow flag
+  RainCount            -= sendRainCnt;
   
 #if (SENSOR_RAIN == 1)
-  sendURL += uint16_t2HEX (iNetTx.RainCount);
+  sendURL += uint16_t2HEX (iNetTx.accRainCount);
 #else
   sendURL += "FFFF";
 #endif
@@ -81,13 +84,11 @@ void updateData (void) {      // true: update success
     } else if (ESPstate == 4) {                   // DNS ok, wait for server response
       if (result == 16) {                         // sent ok
         ESPstate = 11;                            // exit while {} with success
-        RainCount -= TxData.RainCount;
         resetTxData ();
         sysPara.NodeStatus &= 0x7F;               // clear node reboot flag
         printDEBUG ("[N] Send OK");
       } else if (result == 31) {                  // OTA
         ESPstate = 5;
-        RainCount -= TxData.RainCount;
         resetTxData ();
         sysPara.NodeStatus &= 0x7F;               // clear node reboot flag
         printDEBUG ("[N] Send OK");
