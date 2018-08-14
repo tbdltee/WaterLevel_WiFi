@@ -41,20 +41,12 @@
                     {
                         "id": "71ede488.1f3c0c",
                         "port": 0
-                    },
-                    {
-                        "id": "9a4e4be9.beebd8",
-                        "port": 0
-                    },
-                    {
-                        "id": "9eb5dd.8b59ea2",
-                        "port": 0
                     }
                 ]
             },
             {
-                "x": 1222.8572826385498,
-                "y": 505.7143363952637,
+                "x": 1104.2858047485352,
+                "y": 485.7143774032593,
                 "wires": [
                     {
                         "id": "bdf172ee.0aebe",
@@ -551,7 +543,7 @@
         "type": "function",
         "z": "ec65ea11.3c4548",
         "name": "extractData",
-        "func": "var d = new Date(); // get server local time\nvar msg1 = {};      // error out\nvar msg2 = {};      // data out\nvar splitData = msg.payload.split(',');\nif (splitData.length == 6) {\n    var attempt = parseInt (\"0x\" + splitData[5].slice(2,4));\n    var NoResp  = parseInt (\"0x\" + splitData[5].slice(6,8));\n\tif (NoResp > attempt) NoResp = attempt;\n    msg1 = null;\n\tmsg2 = {\n\t    payload: \"data\",\n\t    DEVdata: {\n            'timestamp': d,\n            'RetryNr':  parseInt (splitData[0].slice(4)) - 5,\n            'rcvKey':   splitData[0].slice(0,4),\n            'FWversion':splitData[1],\n            'devID':    splitData[2],\n            'distance': parseInt(splitData[3]),\n            'data': {\n                'batt':   parseInt (\"0x\" + splitData[4].slice(0,2)),\n                'tempC':  parseInt (\"0x\" + splitData[4].slice(2,4)),\n                'rh': \t  parseInt (\"0x\" + splitData[4].slice(4,6)),\n                'rainCnt': ((parseInt (\"0x\" + splitData[4].slice(6,8)) << 8) + parseInt (\"0x\" + splitData[4].slice(8,10)))\n            },\n            'sts': {\n                'reboot':   ((parseInt (\"0x\" + splitData[5].slice(0,2)) & 0x80)?1:0),\n                'attempt':\tattempt,\n                'DNSfail':\tparseInt (\"0x\" + splitData[5].slice(4,6)),\n                'NoResp':\tNoResp,\n                'iNetfail':\tparseInt (\"0x\" + splitData[5].slice(8,10)),\n                'errWiFi':\tparseInt (\"0x\" + splitData[5].slice(10,12)),\n                'errHost':\tparseInt (\"0x\" + splitData[5].slice(12,14))\n            }\n        },\n        remote: msg.remote\n    };\n} else {\n  msg1 = {\n    'proto': msg.remote.proto,\n    '_session': msg._session,\n    'ip': msg.remote.ip,\n    'port': msg.remote.port,\n\t'payload': \"11,invalid parameter\\n\",\n\t'info': \"Error: Invalid parameter. Raw: \" + msg.payload\n    }\n\tmsg2 = null;\n}\nreturn [msg1,msg2];",
+        "func": "var d = new Date(); // get server local time\nvar msg1 = {};      // error out\nvar msg2 = {};      // data out\nvar splitData = msg.payload.split(',');\nif (splitData.length == 6) {\n  var attempt = parseInt (\"0x\" + splitData[5].slice(2,4));\n  var NoResp  = parseInt (\"0x\" + splitData[5].slice(6,8));\n\tif (NoResp > attempt) NoResp = attempt;\n    msg1 = null;\n    msg2 = {\n      payload: \"data\",\n      DEVdata: {\n        'timestamp':  d,\n        'RetryNr':    parseInt (splitData[0].slice(4)) - 5,\n        'rcvKey':     splitData[0].slice(0,4),\n        'FWversion':  splitData[1],\n        'devID':      splitData[2],\n        'data': {\n          'batt':     parseInt (\"0x\" + splitData[4].slice(0,2)),\n          'distance': parseInt(splitData[3]),\n          'tempC':    parseInt (\"0x\" + splitData[4].slice(2,4)),\n          'rh':       parseInt (\"0x\" + splitData[4].slice(4,6)),\n          'rainCnt':  ((parseInt (\"0x\" + splitData[4].slice(6,8)) << 8) + parseInt (\"0x\" + splitData[4].slice(8,10)))\n        },\n        'sts': {\n          'reboot':   ((parseInt (\"0x\" + splitData[5].slice(0,2)) & 0x80)?1:0),\n          'attempt':  attempt,\n          'DNSfail':  parseInt (\"0x\" + splitData[5].slice(4,6)),\n          'NoResp':\t  NoResp,\n          'iNetfail': parseInt (\"0x\" + splitData[5].slice(8,10)),\n          'errWiFi':  parseInt (\"0x\" + splitData[5].slice(10,12)),\n          'errHost':  parseInt (\"0x\" + splitData[5].slice(12,14))\n        }\n      },\n      remote: msg.remote\n    };\n} else {\n  msg1 = {\n    'proto': msg.remote.proto,\n    '_session': msg._session,\n    'ip': msg.remote.ip,\n    'port': msg.remote.port,\n    'payload': \"11,invalid parameter\\n\",\n    'info': \"Error: Invalid parameter. Raw: \" + msg.payload\n  }\n\tmsg2 = null;\n}\nreturn [msg1,msg2];",
         "outputs": 2,
         "noerr": 0,
         "x": 230.02468872070312,
@@ -567,29 +559,12 @@
         "id": "71ede488.1f3c0c",
         "type": "function",
         "z": "ec65ea11.3c4548",
-        "name": "chkDevice?",
-        "func": "var msg1 = {};          // UDP error out\nvar msg2 = {};\n\nif (msg.payload === undefined || msg.payload.length === 0) {\t// check if array is empty\n    msg1 = {\n        'proto': msg.remote.proto,\n        '_session': msg.remote._session,\n        'ip': msg.remote.ip,\n        'port': msg.remote.port,\n        'payload': \"13,device not found\\n\",\n        'info': \"Error: Device not found. [\"+msg.DEVdata.devID+\"]\"\n    }\n    msg2 = null;\n} else if (msg.payload.length > 1) {\t\t\t\t\t    // duplicate devide list\n\tmsg1 = {\n        'proto': msg.remote.proto,\n        '_session': msg.remote._session,\n        'ip': msg.remote.ip,\n\t\t'port': msg.remote.port,\n\t\t'payload': \"14,duplicate device ID\\n\",\n\t\t'info': \"Error: Duplicate device. [\"+msg.DEVdata.devID+\"]\"\n    }\n    msg2 = null;\n} else {\n    msg1 = null;\n    var rainMMperTip = (msg.payload[0].config.rainMMperTip.rainVolmmx10/msg.payload[0].config.rainMMperTip.rainAreaCM2);\n\tmsg2 = {\n\t\t'payload': \"data\",\n\t\tremote: msg.remote,\n\t\tDEVdata: msg.DEVdata,\n\t\textra: {\n\t\t\t'recID': msg.payload[0]._id,\n\t\t\t'fotaFW': msg.payload[0].config.fotaFW,\n\t\t\t'refLevel': msg.payload[0].levelRef,\n\t\t\t'lineToken': msg.payload[0].config.lineNotifyToken,\n\t\t\t'prevRainMM': msg.payload[0].devData.rainMM,\n\t\t\t'rainMMperTip': rainMMperTip,\n\t\t\t'prevHidxT': msg.payload[0].devData.HidxT,\n\t\t\t'prevTime': msg.payload[0].devData.lastUpdate\n\t\t}\n\t}\n\tmsg2.extra.newKey = (msg.DEVdata.rcvKey == msg.payload[0].sessionKey)?0:1;\n\tmsg2.extra.seqStep = (msg.DEVdata.sts.reboot==1)?0:seqStep(msg.payload[0].sessionKey, msg.DEVdata.rcvKey);\n    msg2.DEVdata.data.levelCM = msg.payload[0].levelRef - msg2.DEVdata.distance;\n    \n    msg2.DEVdata.data.rainMM = roundToTwo((msg2.DEVdata.data.rainCnt - msg.payload[0].devData.rainCnt) * rainMMperTip);\n    if (msg2.DEVdata.data.rainCnt > 0x7FFF) msg2.DEVdata.data.rainCnt -= 0x8000;\n}\nreturn [msg1, msg2];\n\nfunction roundToTwo(num) {    \n    return +(Math.round(num + \"e+2\")  + \"e-2\");\n}\n\nfunction seqStep (prevSEQ, thisSEQ) {\n    var prev = parseInt (\"0x\" + prevSEQ);\n    var next = parseInt (\"0x\" + thisSEQ);\n    if (thisSEQ < prevSEQ) {        // roll over\n        return (65536 - prev) + next;\n    } else {\n        return next - prev;\n    }\n    \n}",
+        "name": "chkDeviceData",
+        "func": "var msg1 = {};          // UDP error out\nvar msg2 = {};\n\nif (msg.payload === undefined || msg.payload.length === 0) {  // check if array is empty\n  msg1 = ResponseMSG (msg, \"13,device not found\\n\", \"Error: Device not found. [\"+msg.DEVdata.devID+\"]\");\n  msg2 = null;\n} else if (msg.payload.length > 1) {                          // duplicate devide list\n  msg1 = ResponseMSG (msg, \"14,duplicate device ID\\n\", \"Error: Duplicate device. [\"+msg.DEVdata.devID+\"]\");\n  msg2 = null;\n} else {\n  var sKey = msg.DEVdata.rcvKey + \"-\" + msg.DEVdata.RetryNr;\n  if (msg.DEVdata.rcvKey == msg.payload[0].sessionKey) {      // duplicate key\n    msg1 = ResponseMSG (msg, \"0,\"+sKey+\",0\\n\", \"OK: Duplicate key. [\"+msg.DEVdata.devID+\", \"+sKey+\"]\");\n    msg2 = null;\n  } else {                                                    // valid incoming data\n    //  ==== check OTA firmware ====\n    var isOTA = 0;\n    var fotaFW = msg.payload[0].config.fotaFW;\n    if ((fotaFW.length === 0) || (fotaFW === undefined) || (fotaFW === msg.DEVdata.FWversion)) {\t\t// OTA not required\n      msg1 = ResponseMSG (msg, \"0,\"+sKey+\",0\\n\", \"OK. new key. [\"+msg.DEVdata.devID+\", \"+sKey+\"]\");\n    } else {\n      msg1 = ResponseMSG (msg, \"1,\"+sKey+\",\"+fotaFW+\",0\\n\", \"OK. new key+OTA. [\"+msg.DEVdata.devID+\", \"+sKey+\", \"+fotaFW+\"]\");\n\t  isOTA = 1;\n    }\n    \n    // ====== Server response complete, construct data message ===============\n    var HIdx = calcHeatIndex (msg.DEVdata.data.tempC, msg.DEVdata.data.rh);\n    var seqNrStep = (msg.DEVdata.sts.reboot==1)?0:seqStep(msg.payload[0].sessionKey, msg.DEVdata.rcvKey);\n    var rainMMperTip = (msg.payload[0].config.rainMMperTip.rainVolmmx10/msg.payload[0].config.rainMMperTip.rainAreaCM2);\n    msg2 = {\n      'payload': \"data\",\n      'DEVdata': msg.DEVdata,\n      'extra': {\n        'recID': msg.payload[0]._id\n      },\n      'alert': {\n        'lineToken': msg.payload[0].config.lineNotifyToken,\n      }\n    }\n    msg2.DEVdata.sts.isOTA = isOTA;\n    msg2.DEVdata.sts.iNetfail = (seqNrStep > 0)?(seqNrStep - 1):0;    \n    msg2.DEVdata.data.levelCM = msg.payload[0].levelRef - msg2.DEVdata.data.distance;\n    msg2.DEVdata.data.HidxC = HIdx.HidxC;\n    msg2.DEVdata.data.HidxT = HIdx.HidxText;\n    msg2.alert.isHidxT = HidxChange (HIdx.HidxText, msg.payload[0].devData.HidxT);\n    \n    // calculate Rain in MM\n    var rainMM = 0;\n    if (msg2.DEVdata.data.rainCnt < msg.payload[0].devData.rainCnt) { // incoming accRainCnt<lastaccRainCnt, something wrong. maybe device reset\n      rainMM = msg2.DEVdata.data.rainCnt * rainMMperTip;\n    } else {\n      rainMM = roundToTwo((msg2.DEVdata.data.rainCnt - msg.payload[0].devData.rainCnt) * rainMMperTip);\n    }\n    if (msg2.DEVdata.data.rainCnt > 0x7FFF) msg2.DEVdata.data.rainCnt -= 0x8000;\n    msg2.DEVdata.data.rainMM = roundToTwo (rainMM);\n    msg2.alert.isRain = rainStatus (msg2.DEVdata.data.rainMM, msg.payload[0].devData.rainMM); \n  }\n}\nreturn [msg1, msg2];\n\nfunction HidxChange (nowHidxT, prevHidxT) {\n  if (prevHidxT != nowHidxT) return nowHidxT;\n  else return \"no\";\n}\n\nfunction rainStatus (nowRainMM, prevRainMM) {\n  var IsRain = \"no\";\n  if (nowRainMM > 0) {    // raining\n    if (prevRainMM > 0) IsRain = \"raining\";\n    else IsRain = \"start\";\n  } else {                            // no rain\n    if (prevRainMM > 0) IsRain = \"stop\";\n    else IsRain = \"no\";\n  }\n  return IsRain;\n}\n\nfunction calcHeatIndex (tempC, RH) {   // calc Heat Index\n  var T = (tempC*9/5)+32;\n  var Hc1 = -42.379+(2.04901523*T)+(10.14333127*RH)-(0.22475541*T*RH)-(0.00683783*T*T)-(0.05481717*RH*RH)+(0.00122874*T*T*RH)+(0.00085282*T*RH*RH)-(0.00000199*T*T*RH*RH)\n  var Hc2 = ((T>=80)&&(T<=112)&&(RH<13))?(-1*((13-RH)/4)*Math.sqrt((17-Math.abs(T-95))/17)): (((T>=80)&&(T<=87)&&(RH>85))?((RH-85)/10)*((87-T)/5): 0);\n  var HidxF = ((Hc1+Hc2)<80)?0.5*(T+61+((T-68)*1.2)+(RH*0.094)): (Hc1+Hc2);\n  var HidxC = Math.round((HidxF-32)*5/9);\n  var HidxT = (HidxC>50)?\"extreme hot\":((HidxC>40)?\"very hot\":((HidxC>35)?\"hot\":\"comfort\"));\n  var objHidx = { 'HidxC': HidxC, 'HidxText': HidxT };\n  return objHidx;\n}\n\nfunction ResponseMSG (msg, respCode, respInfo) {\n  var respMSG = {\n    'proto': msg.remote.proto,\n    '_session': msg.remote._session,\n    'ip': msg.remote.ip,\n    'port': msg.remote.port,\n    'payload': respCode,\n    'info': respInfo\n  }\n  return respMSG;\n}\n\nfunction roundToTwo(num) { return +(Math.round(num + \"e+2\")  + \"e-2\"); }\n\nfunction seqStep (prevSEQ, thisSEQ) {\n  var prev = parseInt (\"0x\" + prevSEQ);\n  var next = parseInt (\"0x\" + thisSEQ);\n  if (thisSEQ < prevSEQ) {        // roll over\n    return (65536 - prev) + next;\n  } else {\n    return next - prev;\n  }  \n}",
         "outputs": 2,
         "noerr": 0,
-        "x": 224.31049346923828,
+        "x": 234.31049346923828,
         "y": 248.58627891540527,
-        "wires": [
-            [],
-            [
-                "9eb5dd.8b59ea2"
-            ]
-        ]
-    },
-    {
-        "id": "9a4e4be9.beebd8",
-        "type": "function",
-        "z": "ec65ea11.3c4548",
-        "name": "chkFOTA?",
-        "func": "var msg1 = {};          // udp out\nvar msg2 = {};\n\nif (msg.payload == \"data\") {\n    var fotaFW = msg.extra.fotaFW;\n    var sKey = msg.DEVdata.rcvKey + \"-\" + msg.DEVdata.RetryNr;\n    msg2 = msg;\n    if ((fotaFW.length === 0) || (fotaFW === undefined) || (fotaFW === msg.DEVdata.FWversion)) {\t\t// OTA not required\n\t    msg1 = {\n\t        'proto': msg.remote.proto,\n\t        '_session': msg.remote._session,\n\t\t\t'ip': msg.remote.ip,\n\t\t\t'port': msg.remote.port,\n\t\t\t'payload': \"0,\" + sKey + \",0\\n\",\n\t\t\t'info': \"OK. new key. [\" + msg.DEVdata.devID + \", \" + sKey + \"]\"\n        }\n\t    msg2.DEVdata.sts.isOTA = 0;\n    } else {\n        msg1 = {\n            'proto': msg.remote.proto,\n            '_session': msg.remote._session,\n\t\t\t'ip': msg.remote.ip,\n\t\t\t'port': msg.remote.port,\n\t\t\t'payload': \"1,\" + sKey + \",\" + msg.extra.fotaFW  + \",0\\n\",\n\t\t\t'info': \"OK. new key+OTA. [\"+msg.DEVdata.devID+\", \"+sKey+\", \"+msg.extra.fotaFW+\"]\"\n        }\n\t    msg2.DEVdata.sts.isOTA = 1;\n    }\n}\n\nreturn [msg1, msg2];",
-        "outputs": 2,
-        "noerr": 0,
-        "x": 231.45354461669922,
-        "y": 421.4434871673584,
         "wires": [
             [],
             [
@@ -601,18 +576,18 @@
         "id": "efdff38b.3b20e",
         "type": "function",
         "z": "ec65ea11.3c4548",
-        "name": "updateDevData & Heat Index, ",
-        "func": "var msg1 = {};          // update MongoDB\nvar filter = {'_id': msg.extra.recID};\nvar update = {};\nvar option = {'upsert': true};\n\n// ========= calc Heat Index ===================\nvar T = (msg.DEVdata.data.tempC*9/5)+32;\nvar RH = msg.DEVdata.data.rh;\nvar Hc1 = -42.379+(2.04901523*T)+(10.14333127*RH)-(0.22475541*T*RH)-(0.00683783*T*T)-(0.05481717*RH*RH)+(0.00122874*T*T*RH)+(0.00085282*T*RH*RH)-(0.00000199*T*T*RH*RH)\nvar Hc2 = ((T>=80)&&(T<=112)&&(RH<13))?(-1*((13-RH)/4)*Math.sqrt((17-Math.abs(T-95))/17)): (((T>=80)&&(T<=87)&&(RH>85))?((RH-85)/10)*((87-T)/5): 0);\nvar HidxF = ((Hc1+Hc2)<80)?0.5*(T+61+((T-68)*1.2)+(RH*0.094)): (Hc1+Hc2);\nvar HidxC = Math.round((HidxF-32)*5/9);\nvar HidxT = (HidxC>50)?\"extreme hot\":((HidxC>40)?\"very hot\":((HidxC>35)?\"hot\":\"comfort\"));\nmsg.DEVdata.data.HidxC = HidxC;\nmsg.DEVdata.data.HidxT = HidxT;\n\nvar devData = {\n\t'batt': msg.DEVdata.data.batt,\n\t'tempC': msg.DEVdata.data.tempC,\n\t'rh': msg.DEVdata.data.rh,\n\t'distance': msg.DEVdata.distance,\n\t'levelCM': msg.DEVdata.data.levelCM,\n\t'rainCnt': msg.DEVdata.data.rainCnt,\n\t'rainMM': msg.DEVdata.data.rainMM,\n\t'HidxC': HidxC,\n\t'HidxT': HidxT\n};\nvar stsData = {\n\t'sts.reboot':msg.DEVdata.sts.reboot,\n\t'sts.attempt':msg.DEVdata.sts.attempt,\n\t'sts.DNSfail':msg.DEVdata.sts.DNSfail,\n\t'sts.NoResp':msg.DEVdata.sts.NoResp,\n\t'sts.iNetfail': (msg.extra.seqStep>0)?(msg.extra.seqStep - 1):0,\n\t'sts.errWiFi':msg.DEVdata.sts.errWiFi,\n\t'sts.errHost':msg.DEVdata.sts.errHost\n};\n\nif (msg.payload == \"data\") {\n\tif (msg.DEVdata.sts.isOTA === 0) {\n        update = {\n\t\t\t'$set':{\n\t\t\t\t'FWver': msg.DEVdata.FWversion,\n\t\t\t\t'sessionKey': msg.DEVdata.rcvKey,\n\t\t\t\t'lastUpdate': msg.DEVdata.timestamp,\n\t\t\t\t'devData': devData,\n\t\t\t\t'config.fotaFW': \"\",\n\t\t\t\t'sts.isOTA':0\n\t\t\t},\n\t\t\t'$inc': stsData\n\t\t};\n    } else {\n\t    update = {\n\t\t\t'$set':{\n\t\t\t\t'FWver': msg.DEVdata.FWversion,\n\t\t\t\t'sessionKey': msg.DEVdata.rcvKey,\n\t\t\t\t'lastUpdate': msg.DEVdata.timestamp,\n\t\t\t\t'devData': devData,\n\t\t\t\t'sts.isOTA':1\n\t\t\t},\n\t\t\t'$inc': stsData\n\t\t};\n    }\n    msg1.payload = [filter, update, option];\n} else {\n    msg1 = null;\n}\nreturn [msg1, msg];",
+        "name": "updateDevData",
+        "func": "var msg1 = {};          // update MongoDB\nvar filter = {'_id': msg.extra.recID};\nvar update = {};\nvar option = {'upsert': true};\n\nvar devData = msg.DEVdata.data;\nvar stsData = {\n  'sts.reboot':  msg.DEVdata.sts.reboot,\n  'sts.attempt': msg.DEVdata.sts.attempt,\n  'sts.DNSfail': msg.DEVdata.sts.DNSfail,\n  'sts.NoResp':  msg.DEVdata.sts.NoResp,\n  'sts.iNetfail':msg.DEVdata.sts.iNetfail,\n  'sts.errWiFi': msg.DEVdata.sts.errWiFi,\n  'sts.errHost': msg.DEVdata.sts.errHost\n};\n\nif (msg.payload == \"data\") {\n  if (msg.DEVdata.sts.isOTA === 0) {\n    update = {\n      '$set':{\n        'FWver': msg.DEVdata.FWversion,\n        'sessionKey': msg.DEVdata.rcvKey,\n        'lastUpdate': msg.DEVdata.timestamp,\n        'devData': devData,\n        'config.fotaFW': \"\",\n        'sts.isOTA':0\n      },\n      '$inc': stsData\n    };\n  } else {\n    update = {\n      '$set':{\n        'FWver': msg.DEVdata.FWversion,\n        'sessionKey': msg.DEVdata.rcvKey,\n        'lastUpdate': msg.DEVdata.timestamp,\n        'devData': devData,\n        'sts.isOTA':1\n      },\n      '$inc': stsData\n    };\n  }\n  msg1.payload = [filter, update, option];\n} else {\n  msg1 = null;\n}\nreturn [msg1, msg];",
         "outputs": 2,
         "noerr": 0,
-        "x": 700.0252227783203,
-        "y": 192.87218856811523,
+        "x": 522.8822708129883,
+        "y": 404.30086612701416,
         "wires": [
             [
                 "79031f42.80093"
             ],
             [
-                "1b872dee.905d12"
+                "bdf172ee.0aebe"
             ]
         ]
     },
@@ -625,8 +600,8 @@
         "name": "updateData",
         "collection": "device_list",
         "operation": "updateOne",
-        "x": 991.2155990600586,
-        "y": 165.72929573059082,
+        "x": 891.2155303955078,
+        "y": 404.30077934265137,
         "wires": [
             []
         ]
@@ -653,7 +628,7 @@
         "type": "function",
         "z": "4e76a40f.e01dbc",
         "name": "dashboardData",
-        "func": "global.set ('devID', msg.payload.deviceID);\ndata_out = msg;\n\nvar Chart_data = {\n    'tempC': {\n        'topic': \"tempC\",\n        'payload': msg.payload.data.tempC,\n        'timestamp': msg.payload.timestamp\n    },\n    'rh': {\n        'topic': \"%RH\",\n        'payload': msg.payload.data.rh,\n        'timestamp': msg.payload.timestamp\n    },\n    'rain': {\n        'topic': \"rain\",\n        'payload': msg.payload.data.rainMM,\n        'timestamp': msg.payload.timestamp\n    }\n};\nvar Level_data = {\n    'topic': msg.payload.deviceID,\n    'timestamp': msg.payload.timestamp,\n    'payload': {\n        'batt': msg.payload.data.batt,\n        'levelCM': msg.payload.data.levelCM,\n        'tempC': msg.payload.data.tempC,\n        'rh': msg.payload.data.rh,\n        'rain': msg.payload.data.rainMM,\n        'rain1hr': msg.payload.data.rainMM60min,\n        'rain24hr': msg.payload.data.rainMM24hr,\n        'HidxC': msg.payload.data.HidxC,\n        'HidxT': msg.payload.data.HidxT\n    }\n};\n\nvar Kai_data = {\n    'payload': {\n    \t's': msg.payload.data.levelCM,\n\t    'b': msg.payload.data.batt,\n\t    't': msg.payload.data.tempC,\n\t    'rh': msg.payload.data.rh,\n\t    'rain': msg.payload.data.rainMM\n    }\n};\nreturn [Chart_data, Level_data, Kai_data, data_out];",
+        "func": "global.set ('devID', msg.payload.deviceID);\ndata_out = msg;\n\nvar Chart_data = {\n  'tempC': {\n    'topic': \"tempC\",\n    'payload': msg.payload.data.tempC,\n    'timestamp': msg.payload.timestamp\n  },\n  'rh': {\n    'topic': \"%RH\",\n    'payload': msg.payload.data.rh,\n    'timestamp': msg.payload.timestamp\n  },\n  'rain': {\n    'topic': \"rain\",\n    'payload': msg.payload.data.rainMM,\n    'timestamp': msg.payload.timestamp\n  }\n};\nvar Level_data = {\n  'topic': msg.payload.deviceID,\n  'timestamp': msg.payload.timestamp,\n  'payload': {\n    'batt': msg.payload.data.batt,\n    'levelCM': msg.payload.data.levelCM,\n    'tempC': msg.payload.data.tempC,\n    'rh': msg.payload.data.rh,\n    'rainMM': msg.payload.data.rainMM,\n    'rainMM1hr': msg.payload.data.rainMM1hr,\n    'rainMM24hr': msg.payload.data.rainMM24hr,\n    'HidxC': msg.payload.data.HidxC,\n    'HidxT': msg.payload.data.HidxT\n  }\n};\n\nvar Kai_data = {\n  'payload': {\n    's': msg.payload.data.levelCM,\n    'b': msg.payload.data.batt,\n    't': msg.payload.data.tempC,\n    'rh': msg.payload.data.rh,\n    'rain': msg.payload.data.rainMM\n  }\n};\nreturn [Chart_data, Level_data, Kai_data, data_out];",
         "outputs": 4,
         "noerr": 0,
         "x": 275.8233985900879,
@@ -731,7 +706,7 @@
         "xformat": "auto",
         "interpolate": "linear",
         "nodata": "wait for data...",
-        "dot": true,
+        "dot": false,
         "ymin": "0",
         "ymax": "100",
         "removeOlder": 1,
@@ -858,23 +833,6 @@
         "y": 559.5241508483887,
         "wires": [
             []
-        ]
-    },
-    {
-        "id": "9eb5dd.8b59ea2",
-        "type": "function",
-        "z": "ec65ea11.3c4548",
-        "name": "newKey?",
-        "func": "var msg1 = {};          // udp out\nvar msg2 = {};\n\nif ((msg.payload == \"data\") && (msg.extra.newKey == 1)) {\n    msg1 = null;\n    msg2 = msg;\n} else {\n    var sKey = msg.DEVdata.rcvKey + \"-\" + msg.DEVdata.RetryNr;\n    msg1 = {\n        'proto': msg.remote.proto,\n        '_session': msg.remote._session,\n\t\t'ip': msg.remote.ip,\n\t\t'port': msg.remote.port,\n\t\t'payload': \"0,\" + sKey + \",0\\n\",\n\t\t'info': \"OK: Duplicate key. [\" + msg.DEVdata.devID + \", \" + sKey + \"]\"\n    }\n    msg2 = null;\n}\n\nreturn [msg1, msg2];",
-        "outputs": 2,
-        "noerr": 0,
-        "x": 217.16770935058594,
-        "y": 338.5862808227539,
-        "wires": [
-            [],
-            [
-                "9a4e4be9.beebd8"
-            ]
         ]
     },
     {
@@ -1129,7 +1087,7 @@
         "type": "function",
         "z": "8bf414b7.1e1a68",
         "name": "initVar",
-        "func": "var msg1 = {\n    'payload': {\n        'deviceID': \"n/a\",\n        'devData': {\n            'batt': 0,\n            'levelCM': 0,\n            'tempC': 0,\n            'rh': 0,\n            'rain': 0,\n            'HidxC': 0,\n            'HidxT': \"n/a\"\n        },\n        'newLevelCM': 0\n    }\n};\nglobal.set ('devID', 'n/a');\nreturn [msg1, msg];",
+        "func": "var msg1 = {\n    'payload': {\n        'deviceID': \"n/a\",\n        'devData': {\n            'batt': 0,\n            'levelCM': 0,\n            'tempC': 0,\n            'rh': 0,\n            'rainMM': 0,\n            'rainMM1hr': 0,\n            'rainMM24hr': 0,\n            'HidxC': 0,\n            'HidxT': \"n/a\"\n        },\n        'newLevelCM': 0\n    }\n};\nglobal.set ('devID', 'n/a');\nreturn [msg1, msg];",
         "outputs": 2,
         "noerr": 0,
         "x": 218.01991653442383,
@@ -1214,7 +1172,7 @@
         "type": "function",
         "z": "8bf414b7.1e1a68",
         "name": "format Output",
-        "func": "var msg1 = {};\nvar Chart_level = {};\nvar devID = global.get ('devID')||\"n/a\";\n\nif (msg.topic == \"n/a\") {\n    //Chart_level.payload = [];\n} else {\n    Chart_level = {\n        'topic': msg.topic,\n        'payload': msg.payload.levelCM,\n        'timestamp': msg.timestamp\n    };\n}\n\nmsg1.topic = msg.topic; \nmsg1.payload = {\n    data1: {\n        'name':\"%batt:\",\n        'value':msg.payload.batt\n    },\n    data2: {\n        'name':\"%RH:\",\n        'value':msg.payload.rh\n    },\n    data3: {\n        'name':\"TempC:\",\n        'value':msg.payload.tempC\n    },\n\tdata4: {\n        'name':\"feel like:\",\n        'value':msg.payload.HidxC\n    },\n    data5: {\n        'name':\" \",\n        'value': \"[\"+ msg.payload.HidxT+\"]\"\n    },\n    data6: {\n        'name':\"rain,mm:\",\n        'value':msg.payload.rain\n    },\n    data7: {\n        'name':\"- 1hr,mm:\",\n        'value':msg.payload.rain1hr\n    },\n    data8: {\n        'name':\"- 1d,mm:\",\n        'value':msg.payload.rain24hr\n    },\n    data9: {\n        'name':\"level,cm:\",\n        'value':msg.payload.levelCM\n    }\n};\nreturn [Chart_level, msg1];",
+        "func": "var msg1 = {};\nvar Chart_level = {};\nvar devID = global.get ('devID')||\"n/a\";\n\nif (msg.topic == \"n/a\") {\n    //Chart_level.payload = [];\n} else {\n  Chart_level = {\n    'topic': msg.topic,\n    'payload': msg.payload.levelCM,\n    'timestamp': msg.timestamp\n  };\n}\n\nmsg1.topic = msg.topic; \nmsg1.payload = {\n  data1: { 'name':\"%batt:\",     'value':msg.payload.batt },\n  data2: { 'name':\"%RH:\",       'value':msg.payload.rh },\n  data3: { 'name':\"TempC:\",     'value':msg.payload.tempC },\n  data4: { 'name':\"feel like:\", 'value':msg.payload.HidxC },\n  data5: { 'name':\" \",          'value': \"[\"+ msg.payload.HidxT+\"]\" },\n  data6: { 'name':\"rain,mm:\",   'value':msg.payload.rainMM },\n  data7: { 'name':\"- last 1 hr:\", 'value':msg.payload.rainMM1hr },\n  data8: { 'name':\"- last 1 d:\", 'value':msg.payload.rainMM24hr },\n  data9: { 'name':\"level,cm:\",  'value':msg.payload.levelCM }\n};\nreturn [Chart_level, msg1];",
         "outputs": 2,
         "noerr": 0,
         "x": 1094.0764923095703,
@@ -1348,11 +1306,11 @@
         "type": "function",
         "z": "d359f0cf.9a9ef",
         "name": "add-headers",
-        "func": "msg.headers = {\n    'content-type':\"application/x-www-form-urlencoded\",\n    'Authorization':\"Bearer \" + msg.payload.token\n};\n//https://developers.line.me/media/messaging-api/sticker_list.pdf\nreturn msg;",
+        "func": "msg.headers = {\n  'content-type':\"application/x-www-form-urlencoded\",\n  'Authorization':\"Bearer \" + msg.payload.token\n};\n//https://developers.line.me/media/messaging-api/sticker_list.pdf\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
-        "x": 788.5946426391602,
-        "y": 253.5267515182495,
+        "x": 702.8803634643555,
+        "y": 124.95532703399658,
         "wires": [
             [
                 "50368ba4.ab3dc4"
@@ -1368,8 +1326,8 @@
         "ret": "txt",
         "url": "https://notify-api.line.me/api/notify/",
         "tls": "",
-        "x": 999.8562164306641,
-        "y": 252.00481033325195,
+        "x": 885.5704689025879,
+        "y": 223.43337631225586,
         "wires": [
             [
                 "24e7e546.2f759a"
@@ -1381,7 +1339,7 @@
         "type": "function",
         "z": "d359f0cf.9a9ef",
         "name": "sendToLINE?",
-        "func": "var status_msg = {};\nvar LINE_msg = {};\nvar sendToLINE = flow.get ('sendToLINE')||0;\nif (msg.payload == \"buttonPressed\") {\n    if (sendToLINE > 0) {\n        sendToLINE = 0;\n        status_msg = {\n            'payload': \"don't send\",\n            'shape': 'dot',\n            'fill':\"red\"\n        }\n    } else {\n        sendToLINE = 1;\n        status_msg = {\n            'payload': \"Yes. 0 msg sent.\",\n            'shape': 'dot',\n            'fill':\"green\"\n        }\n    }\n    flow.set ('sendToLINE', sendToLINE);\n    LINE_msg = null;\n} else {\n    status_msg = null;\n    if (sendToLINE == 1) LINE_msg = msg;\n    else LINE_msg = null;\n}\n\nreturn [status_msg, LINE_msg];",
+        "func": "var status_msg = {};\nvar LINE_msg = {};\nvar sendToLINE = global.get ('sendToLINE')||0;\nif (msg.payload == \"buttonPressed\") {\n  if (sendToLINE > 0) {\n    sendToLINE = 0;\n    status_msg = {\n      'payload': \"don't send\",\n      'shape': 'dot',\n      'fill':\"red\"\n    }\n  } else {\n    sendToLINE = 1;\n    status_msg = {\n      'payload': \"Yes. 0 msg sent.\",\n      'shape': 'dot',\n      'fill':\"green\"\n    }\n  }\n  global.set ('sendToLINE', sendToLINE);\n  LINE_msg = null;\n} else {                    // incoming alert message\n  status_msg = null;\n  if (sendToLINE == 1) LINE_msg = msg;\n  else LINE_msg = null;\n}\nreturn [status_msg, LINE_msg];",
         "outputs": 2,
         "noerr": 0,
         "x": 221.5740966796875,
@@ -1416,8 +1374,8 @@
         "func": "var msg1 = {};\nif (msg.payload.alert === undefined) return null;\nswitch (msg.payload.alert.isHidxT) {\n    case \"comfort\":\n        msg1.token = msg.payload.alert.lineToken;\n        msg1.payload = {\n            'message': \"สบาย สบาย...\",\n            'stickerPackageId': 2,\n            'stickerId': 501\n        };\n        break;\n    case \"hot\":\n        msg1.token = msg.payload.alert.lineToken;\n        msg1.payload = {\n            'message': \"ร้อน จุงเบย...\",\n            'stickerPackageId': 2,\n            'stickerId': 511\n        };\n        break;\n    case \"very hot\":\n        msg1.token = msg.payload.alert.lineToken;\n        msg1.payload = {\n            'message': \"ร้อนมั่กๆ ...\",\n            'stickerPackageId': 2,\n            'stickerId': 27\n        };\n        break;\n    case \"extreme hot\":\n        msg1.token = msg.payload.alert.lineToken;\n        msg1.payload = {\n            'message': \"ร้อนตับแล่บ...\",\n            'stickerPackageId': 2,\n            'stickerId': 526\n        };\n        break;\n    default:\n        msg1 = null;\n}\nreturn msg1;",
         "outputs": 1,
         "noerr": 0,
-        "x": 458.57142639160156,
-        "y": 272.85717010498047,
+        "x": 454.2857208251953,
+        "y": 167.14287948608398,
         "wires": [
             [
                 "10e9ebdc.56b334"
@@ -1429,11 +1387,11 @@
         "type": "function",
         "z": "d359f0cf.9a9ef",
         "name": "Alert - Rain",
-        "func": "var msg1 = {};\nif (msg.payload.alert === undefined) return null;\nelse if (msg.payload.alert.isRain == \"start\") {\n    msg1.token = msg.payload.alert.lineToken;\n    msg1.payload = {\n        'message': \"ฝนตกแล้วจร้า...\",\n        'stickerPackageId': 2,\n        'stickerId': 507\n    };\n} else if (msg.payload.alert.isRain == \"stop\") {\n    msg1.token = msg.payload.alert.lineToken;\n    msg1.payload = {\n        'message': \"ฝนหยุดแล้วเน้อ...\",\n        'stickerPackageId': 2,\n        'stickerId': 509\n    };\n} else {\n    msg1 = null;\n}\nreturn msg1;",
+        "func": "var msg1 = {};\nif (msg.payload.alert === undefined) return null;\nelse if (msg.payload.alert.isRain == \"start\") {\n  msg1.token = msg.payload.alert.lineToken;\n  msg1.payload = {\n    'message': \"ฝนตกแล้วจร้า...\",\n    'stickerPackageId': 2,\n    'stickerId': 507\n  };\n} else if (msg.payload.alert.isRain == \"stop\") {\n  msg1.token = msg.payload.alert.lineToken;\n  msg1.payload = {\n    'message': \"ฝนหยุดแล้วเน้อ...\",\n    'stickerPackageId': 2,\n    'stickerId': 509\n  };\n} else {\n  msg1 = null;\n}\nreturn msg1;",
         "outputs": 1,
         "noerr": 0,
-        "x": 436.63770294189453,
-        "y": 228.79223823547363,
+        "x": 436.6376953125,
+        "y": 123.07795333862305,
         "wires": [
             [
                 "10e9ebdc.56b334"
@@ -1596,12 +1554,12 @@
         "id": "bdf172ee.0aebe",
         "type": "function",
         "z": "ec65ea11.3c4548",
-        "name": "add Alert & format Output",
-        "func": "var msg1 = {};\nvar IsRain = \"no\";\n\nif (msg.DEVdata.data.rainMM > 0) {    // raining\n    if (msg.extra.prevRainMM > 0) IsRain = \"raining\";\n    else IsRain = \"start\";\n} else {                            // no rain\n    if (msg.extra.prevRainMM > 0) IsRain = \"stop\";\n    else IsRain = \"no\";\n}\nvar IsHidxChange = \"no\";\nif (msg.extra.prevHidxT != msg.DEVdata.data.HidxT) {\n    IsHidxChange = msg.DEVdata.data.HidxT;\n}\n\nvar Alert = {\n    'lineToken': msg.extra.lineToken,\n    'isRain': IsRain,\n    'isHidxT': IsHidxChange\n};\n\n// ============ format output ===============\nmsg1.payload = {\n    'timestamp': msg.DEVdata.timestamp,\n    'groupID': msg.DEVdata.devID.slice (0,8),\n    'deviceID': msg.DEVdata.devID,\n    'data': msg.DEVdata.data,\n    'sts': msg.DEVdata.sts,\n    'extra': {\n        'distance': msg.DEVdata.distance,\n        'refLevel': msg.extra.refLevel\n    },\n    'alert': Alert\n};\nreturn msg1;",
+        "name": "format Output",
+        "func": "var msg1 = {};\nmsg1.payload = {\n    'timestamp': msg.DEVdata.timestamp,\n    'groupID': msg.DEVdata.devID.slice (0,8),\n    'deviceID': msg.DEVdata.devID,\n    'data': msg.DEVdata.data,\n    'sts': msg.DEVdata.sts,\n    'alert': msg.alert\n};\nreturn msg1;",
         "outputs": 1,
         "noerr": 0,
-        "x": 1001.453800201416,
-        "y": 504.3007287979126,
+        "x": 911.4537124633789,
+        "y": 482.8722200393677,
         "wires": [
             []
         ]
@@ -1735,8 +1693,8 @@
         "func": "if (msg.topic == \"LINE_notify\") return msg;\nelse return null;",
         "outputs": 1,
         "noerr": 0,
-        "x": 472.8819046020508,
-        "y": 324.3006191253662,
+        "x": 464.31046295166016,
+        "y": 225.72918510437012,
         "wires": [
             [
                 "10e9ebdc.56b334"
@@ -1748,11 +1706,11 @@
         "type": "function",
         "z": "d359f0cf.9a9ef",
         "name": "statusSent",
-        "func": "var status_msg = {};\nvar sendToLINE = flow.get ('sendToLINE');\n\nif (msg.statusCode == 200) {\n    status_msg = {\n        'payload': \"message sent ok\",\n        'shape': 'dot',\n        'fill':\"blue\"\n    }\n    sendToLINE++;\n    flow.set ('sendToLINE', sendToLINE);\n} else {\n    status_msg = {\n        'payload': \"message sent error\",\n        'shape': 'dot',\n        'fill':\"red\"\n    }\n}\nreturn status_msg;",
+        "func": "var status_msg = {};\nvar sendToLINE = global.get ('sendToLINE');\n\nif (msg.statusCode == 200) {\n    status_msg = {\n        'payload': \"message sent ok\",\n        'shape': 'dot',\n        'fill':\"blue\"\n    }\n    sendToLINE++;\n    global.set ('sendToLINE', sendToLINE);\n} else {\n    status_msg = {\n        'payload': \"message sent error\",\n        'shape': 'dot',\n        'fill':\"red\"\n    }\n}\nreturn status_msg;",
         "outputs": 1,
         "noerr": 0,
-        "x": 992.8820724487305,
-        "y": 364.8363437652588,
+        "x": 878.5963249206543,
+        "y": 336.2649097442627,
         "wires": [
             [
                 "f88e7c7e.0d134"
@@ -1764,11 +1722,11 @@
         "type": "function",
         "z": "d359f0cf.9a9ef",
         "name": "statusReset",
-        "func": "var sendToLINE = flow.get ('sendToLINE');\nvar status_msg = {\n    'payload': \"Yes. \" + (sendToLINE-1) + \" msg sent.\",\n    'shape': 'dot',\n    'fill':\"green\"\n}\nreturn status_msg;",
+        "func": "var sendToLINE = global.get ('sendToLINE');\nvar status_msg = {\n    'payload': \"Yes. \" + (sendToLINE-1) + \" msg sent.\",\n    'shape': 'dot',\n    'fill':\"green\"\n}\nreturn status_msg;",
         "outputs": 1,
         "noerr": 0,
-        "x": 1004.3106651306152,
-        "y": 534.8363428115845,
+        "x": 890.0249176025391,
+        "y": 506.2649087905884,
         "wires": [
             []
         ]
@@ -1788,8 +1746,8 @@
         "randomLast": "5",
         "randomUnits": "seconds",
         "drop": false,
-        "x": 1000.1041679382324,
-        "y": 457.7480926513672,
+        "x": 885.8184204101562,
+        "y": 429.1766586303711,
         "wires": [
             [
                 "eac458d.75c59a8"
@@ -1871,8 +1829,8 @@
         "name": "insertRainData",
         "collection": "rainData",
         "operation": "insertOne",
-        "x": 1047.1678848266602,
-        "y": 67.15781784057617,
+        "x": 897.1678161621094,
+        "y": 338.58642768859863,
         "wires": [
             []
         ]
@@ -1881,18 +1839,15 @@
         "id": "e5f4fe10.5971f",
         "type": "function",
         "z": "ec65ea11.3c4548",
-        "name": "updateRainData",
-        "func": "var msg1 = {};          // update MongoDB\n\nif (msg.payload == \"data\") {\n    if ((msg.DEVdata.data.rainMM > 0)||((msg.DEVdata.data.rainMM === 0)&&(msg.extra.prevRainMM > 0))) {\n        msg1.payload = {\n        \t'devID': msg.DEVdata.devID,\n\t        'timestamp': msg.DEVdata.timestamp,\n\t        'accRainMM': roundToTwo(msg.DEVdata.data.rainCnt * msg.extra.rainMMperTip)\n        };\n    } else {\n        msg1 = null;\n    }\n} else {\n    msg1 = null;\n}\nreturn [msg1, msg];\n\nfunction roundToTwo(num) {    \n    return +(Math.round(num + \"e+2\")  + \"e-2\");\n}",
-        "outputs": 2,
+        "name": "getRainData24hr",
+        "func": "if (msg.payload == \"data\") {\n  msg.payload = {          // find info within 24hr\n    'devID': msg.DEVdata.devID,\n    'timestamp': {$gt: new Date(msg.DEVdata.timestamp - 24*3600000)}\n  };\n} else {\n  msg.payload = null;\n}\nreturn msg;",
+        "outputs": 1,
         "noerr": 0,
-        "x": 648.5962677001953,
-        "y": 77.15783786773682,
+        "x": 547.1676864624023,
+        "y": 151.44356155395508,
         "wires": [
             [
-                "db215ce6.81a8e"
-            ],
-            [
-                "efdff38b.3b20e"
+                "38084354.fa9c2c"
             ]
         ]
     },
@@ -1904,9 +1859,9 @@
         "configNode": "e8b8f09e.5c7",
         "name": "loadRainData",
         "collection": "rainData",
-        "operation": "findOne",
-        "x": 657.1678009033203,
-        "y": 324.30068588256836,
+        "operation": "find.toArray",
+        "x": 537.167797088623,
+        "y": 214.3007173538208,
         "wires": [
             [
                 "a77c7415.955e48"
@@ -1914,83 +1869,37 @@
         ]
     },
     {
-        "id": "1b872dee.905d12",
-        "type": "function",
-        "z": "ec65ea11.3c4548",
-        "name": "queryRainData1hr",
-        "func": "if (msg.payload == \"data\") {\n    var query = {\n        'devID': msg.DEVdata.devID,\n        'timestamp': {$lt: new Date(msg.DEVdata.timestamp - 3600000)}   // find info older than 1hr\n    };\n    var option = {\n        'limit': 1,                     // limit to 1 query\n        'sort': {'timestamp': -1}       // sort desc\n    };\n    msg.payload = [query, option];     // find lastest > 1hr data\n} else {\n    msg.payload = null;\n}\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 660.02490234375,
-        "y": 271.44351959228516,
-        "wires": [
-            [
-                "38084354.fa9c2c"
-            ]
-        ]
-    },
-    {
         "id": "a77c7415.955e48",
         "type": "function",
         "z": "ec65ea11.3c4548",
-        "name": "addRainData1hr",
-        "func": "var msg1 = {};\nvar accRainMM = 0;\nif (msg.payload) accRainMM = msg.payload.accRainMM;\nmsg.payload = \"data\";\nmsg.DEVdata.data.rainMM60min = roundToTwo((msg.DEVdata.data.rainCnt * msg.extra.rainMMperTip) - accRainMM);\nreturn msg;\n\nfunction roundToTwo(num) {    \n    return +(Math.round(num + \"e+2\")  + \"e-2\");\n}",
+        "name": "addRainData",
+        "func": "var accRainMM1hr = 0;\nvar accRainMM24hr = 0;\nvar msg1 = {};\nif (msg.payload.length > 0) {\n  for (var i = 0; i < msg.payload.length; i++) {\n    accRainMM24hr += msg.payload[i].rainMM;\n    if (((msg.DEVdata.timestamp - msg.payload[i].timestamp)/3600000) < 1) {\n      accRainMM1hr += msg.payload[i].rainMM;\n    }\n  }\n}\nmsg.payload = \"data\";\nmsg.DEVdata.data.rainMM1hr  = accRainMM1hr + msg.DEVdata.data.rainMM;\nmsg.DEVdata.data.rainMM24hr = accRainMM24hr + msg.DEVdata.data.rainMM;\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
-        "x": 658.5962982177734,
-        "y": 390.01489067077637,
+        "x": 530.0248947143555,
+        "y": 275.7292079925537,
         "wires": [
             [
-                "6cdb05db.2f452c"
+                "ba93b18.f13a35"
             ]
         ]
     },
     {
-        "id": "ec64e12c.8d287",
-        "type": "mongodb2 in",
-        "z": "ec65ea11.3c4548",
-        "service": "_ext_",
-        "configNode": "e8b8f09e.5c7",
-        "name": "loadRainData",
-        "collection": "rainData",
-        "operation": "findOne",
-        "x": 644.310546875,
-        "y": 524.3005981445312,
-        "wires": [
-            [
-                "222c1870.d9e5a8"
-            ]
-        ]
-    },
-    {
-        "id": "6cdb05db.2f452c",
+        "id": "ba93b18.f13a35",
         "type": "function",
         "z": "ec65ea11.3c4548",
-        "name": "queryRainData1d",
-        "func": "if (msg.payload == \"data\") {\n    var query = {\n        'devID': msg.DEVdata.devID,\n        'timestamp': {$lt: new Date(msg.DEVdata.timestamp - (24*3600000))}   // find info older than 1hr\n    };\n    var option = {\n        'limit': 1,                     // limit to 1 query\n        'sort': {'timestamp': -1}       // sort desc\n    };\n    msg.payload = [query, option];     // find lastest > 1hr data\n} else {\n    msg.payload = null;\n}\nreturn msg;",
-        "outputs": 1,
+        "name": "insertNewRainData",
+        "func": "var msg1 = {};\nif (msg.payload == \"data\") {\n  if (msg.DEVdata.data.rainMM > 0) {\n    msg1.payload = {\n      'devID': msg.DEVdata.devID,\n      'timestamp': msg.DEVdata.timestamp,\n      'rainMM': msg.DEVdata.data.rainMM\n    };\n  } else {\n    msg1 = null;\n  }\n} else {\n  msg1 = null;\n}\nreturn [msg1, msg];",
+        "outputs": 2,
         "noerr": 0,
-        "x": 647.1676483154297,
-        "y": 471.44343185424805,
+        "x": 531.4534034729004,
+        "y": 342.8720483779907,
         "wires": [
             [
-                "ec64e12c.8d287"
-            ]
-        ]
-    },
-    {
-        "id": "222c1870.d9e5a8",
-        "type": "function",
-        "z": "ec65ea11.3c4548",
-        "name": "addRainData1d",
-        "func": "var accRainMM = 0;\nif (msg.payload) accRainMM = msg.payload.accRainMM;\n\nmsg.payload = \"data\";\nmsg.DEVdata.data.rainMM24hr = roundToTwo((msg.DEVdata.data.rainCnt * msg.extra.rainMMperTip) - accRainMM);\nreturn msg;\n\nfunction roundToTwo(num) {    \n    return +(Math.round(num + \"e+2\")  + \"e-2\");\n}",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 645.7390441894531,
-        "y": 590.0148029327393,
-        "wires": [
+                "db215ce6.81a8e"
+            ],
             [
-                "bdf172ee.0aebe"
+                "efdff38b.3b20e"
             ]
         ]
     }
