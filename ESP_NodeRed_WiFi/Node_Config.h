@@ -25,7 +25,7 @@ ESP Response Code:
       4   - data complete and ready to send
       5   - ESP in Config Mode
       6   - Connenting to wifi
-      7   - Connenting to wifi with config
+      7   - Connenting to wifi with wifi manager
       10  - Resolve Host address
       11  - Host IPaddress presented
 

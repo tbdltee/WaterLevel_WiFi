@@ -1,4 +1,4 @@
-#define stDEBUG             1               // Show Debug message
+#define stDEBUG             0               // Show Debug message
 #define SENSOR_W            2               // Weather Sensor:    0-not present, 1-SHT31, 2-BME280
 #define SENSOR_RAIN         1               // Rain Gauge Sensor: 0-not present, 1-present
 

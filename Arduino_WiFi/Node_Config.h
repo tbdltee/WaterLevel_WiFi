@@ -66,10 +66,10 @@ struct iNetType {                 // data to send to Host
   uint8_t LvSampleRead   = 0;     // #Read of Distance Sensor
   uint32_t iNETattempt   = 0;
   uint32_t iNETDNSfail   = 0;
-  uint32_t iNETNoResp    = 0;
-  uint32_t iNETSentfail  = 0;
-  uint32_t iNETWififail  = 0;
-  uint32_t iNETHostfail  = 0;
+  uint32_t iNETNoResp    = 0;     // #No reponse from TCP/UDP server
+  uint32_t iNETSentfail  = 0;     // #Total Sent error (WiFi error/DNS error/Server error response)
+  uint32_t iNETWififail  = 0;     // #Wifi connenect error
+  uint32_t iNETHostfail  = 0;     // #Sent error (DNS error/Server error response)
 } iNetTx;
 
 #if (stDEBUG > 0)
