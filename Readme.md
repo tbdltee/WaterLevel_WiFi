@@ -28,9 +28,9 @@ Configure 3G-WiFi USB dongle for deivceID IOT-xxxxDyyy:
 
 Configure Line Notification:
 * Add 'Line Notify' as friend in LINE app.
-* goto https://notify-bot.line.me/th/ and log-in woth your LINE id
+* goto https://notify-bot.line.me/th/ and log-in with your LINE id
 * Click menu on  the top-right of the page and select  'My Page'
-* Click ' Generate Token'
+* Click 'Generate Token'
 * Enter 'Token name' and chat group to notify.
   * Token Name: My IOT
   * Chat Group: 1-on-1 chat with Line Notify
