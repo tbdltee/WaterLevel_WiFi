@@ -1,10 +1,9 @@
-#define BattCalibrate       0               // Show A2Value for Battery Voltage Calibration
-#define stDEBUG             0               // Show Debug message
-#define SENSOR_W            1               // Weather Sensor:    0-not present, 1-SHT31, 2-BME280
+#define stDEBUG             1               // Show Debug message
+#define SENSOR_W            2               // Weather Sensor:    0-not present, 1-SHT31, 2-BME280
 #define SENSOR_RAIN         1               // Rain Gauge Sensor: 0-not present, 1-present
 
 const char* Device_GroupID  = "IOT-0001";   // Complete DeviceID = Device_GroupID + Device_ID
-const char* Device_ID       = "D001";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
+const char* Device_ID       = "D002";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
 
 #include "Node_Config.h"
 #include <avr/wdt.h>          // library for default watchdog functions
@@ -69,13 +68,13 @@ void setup() {
     ModemWaitTime   = 0;        // wait for modem to power-up
     ModemPwrUpTime  = 50;       // total modem power-up time 50s
     CMDdelayTime    = 0;        // delay time after wifi connected
-    WakeUpInterval  = 60;       // device wake-up every 60s
-    TxiNET_LowBatt  = 60;       // Send data to internet every 60min (WakeUpInterval x TxiNET_Normal)
-    TxiNET_Normal   = 5;        // Send data to internet every 5min (WakeUpInterval x TxiNET_Normal)
+    WakeUpInterval  = 120;      // device wake-up every 120s
+    TxiNET_LowBatt  = 60;       // Send data to internet every 120min (WakeUpInterval x TxiNET_Normal)
+    TxiNET_Normal   = 5;        // Send data to internet every 10min (WakeUpInterval x TxiNET_Normal)
     T10dayCnt       = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
-    printDEBUG (F("[S] ========== SYSTEM INIT (WiFi Profile) =========="));
+    printDEBUG (F("[S] ====== SYSTEM INIT (WiFi Profile) ======"));
   } else {
-    printDEBUG (F("[S] ========== SYSTEM INIT (3G Profile) =========="));
+    printDEBUG (F("[S] ====== SYSTEM INIT (3G Profile) ======"));
   }
   
   randomSeed(get_rand_byte());

@@ -179,4 +179,3 @@ void fwUpgrade (String newFW_version) {
       break;
   }
 }
-

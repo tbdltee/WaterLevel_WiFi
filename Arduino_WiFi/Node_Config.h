@@ -1,6 +1,6 @@
 #define OTA_ATTEMPT_ALLOW   5               // ESP8266 http OTA: 0-disable, >0-#of OTA failure allow
-uint16_t AnalogValue      = 632;            // AnalogRead from ref. voltage
-uint16_t ActualVolt       = 408;            // Actual voltage at Battery from multi-meter x 100, e.g. 3.96 -> 396
+uint16_t AnalogValue      = 128;            // AnalogRead from ref. voltage. Start low and let auto calibation do the job
+uint16_t ActualVolt       = 412;            // Actual voltage at Battery from multi-meter x 100, e.g. 3.96 -> 396
 
 String Device_Profile   = "3G";         // 3G profile parameter
 uint8_t ModemWaitTime   = 10;           // wait for modem to power-up

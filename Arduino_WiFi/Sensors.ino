@@ -34,14 +34,6 @@ uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
   uint16_t Avalue = analogRead(BattMeasurepin);
   if (Avalue > sysPara.maxA10d) sysPara.maxA10d = Avalue;
   uint16_t Battvolt = map(Avalue, 0, AnalogValue, 0, ActualVolt);
-  
-#if (BattCalibrate == 1)
-    Serial.print ("[B] A2Value:");
-    Serial.print (Avalue);
-    Serial.print (", Volt: ");
-    Serial.println (Battvolt);
-#endif
-
   uint8_t Battpct = 0;
   if (Battvolt < MIN_VOLT) {
     Battpct = 0;
@@ -52,6 +44,7 @@ uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
     Battpct = 100;
     AnalogValue     = Avalue;
     ActualVolt      = 420;
+    printDEBUG ("[S] Auto calibrate ADC: "+String(AnalogValue)+" to 4.20v");
   }
   
   if (sysPara.AvalueCnt == T10dayCnt) {        // 10 days reached
@@ -59,6 +52,7 @@ uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
       AnalogValue     = sysPara.maxA10d;
       ActualVolt      = 420;
       sysPara.maxA10d = Avalue;
+      printDEBUG ("[S] Auto calibrate ADC: "+String(AnalogValue)+" to 4.20v");
     }
     sysPara.AvalueCnt = 0;
   } else {
@@ -131,7 +125,7 @@ uint16_t getDistanceSR04() {                          // Get distance (mm), sing
 // ======================================== BME80 Sensor ================================
 #if (SENSOR_W == 2)
 void BME280_Init(BME280 &BME280Sensor) {        // Init_BME280 in Force Mode
-  BME280Sensor.I2CAddress = BME280_I2Caddress;  // I2C Addr 0x77(default) or 0x76 and ignore SPI
+  BME280Sensor.I2CAddress = 0x76;               // I2C Addr 0x77(default) or 0x76 and ignore SPI
   BME280Sensor.runMode = 1;                     // 0=Sleep, 1,2=Force mode, 3=Normal Mode
   BME280Sensor.tStandby = 0;                    // tStandby[0-7] (Normal Mode Only): 0.5ms, 62.5ms, 125ms, 500ms 1000ms, 10ms, 20ms
   BME280Sensor.filter = 0;                      // Filter coefficients[0-4]: off, 2, 4, 8, 16
