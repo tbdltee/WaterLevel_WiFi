@@ -9,6 +9,7 @@ This project is using HC-SR04p ultrasonic to measure the water level and send to
   * Change device key to Sequence Number
   * device is sent with raw distance data. Water level is calculated on the server.
   * Support line notification
+  * Support only BME280 to simplify the code. 
 * 00400
   * release based on Water_Level_v4
 

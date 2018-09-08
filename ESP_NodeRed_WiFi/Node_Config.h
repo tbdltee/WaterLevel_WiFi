@@ -8,13 +8,6 @@ const int udpEchoPort   = 10721;
 const char* fotaUrlBase = "myiotfota.duckdns.org";
 const int fotaPort      = 10720;
 
-/*
-struct httpRespType {
-  uint16_t  RespCode = 0;        // Http reponse code
-  String    RespText = "";
-  String    RespBody = "";
-};*/
-
 /* =================== READ ME =======================
 IDE Config: Board-Generic ESP8266 Module, Flash Mode-DIO, Flash Size:-1M (no SPIFFS).
 ESP Response Code:
@@ -41,6 +34,6 @@ ESP Response Code:
       C   - Debug message
     
 MongoDB server URL: myiotdata.duckdns.org:8080
-firmware URL:       myiotdata.duckdns.org:8080/.fota/ESP8266-01S_xxxxxx.bin
-HTTP response code: 1,Cipher(newKey,profileID,ModemWaitTime,ModemPwrUpTime,WakeUpInterval,TxiNET_LowBatt,TxiNET_Normal,0)
+firmware URL:       myiotdata.duckdns.org:8080/.fota/ESP8xxxxx.bin
+HTTP response code: 1,newKey,[FOTA],0
 =================== end of READ ME ======================= */

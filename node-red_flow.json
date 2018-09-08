@@ -2,7 +2,14 @@
     {
         "id": "4e76a40f.e01dbc",
         "type": "tab",
-        "label": "My IOT Flow",
+        "label": "My IOT-DirectWiFi",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "eb2c94ba.f33318",
+        "type": "tab",
+        "label": "My IOT-Gateway",
         "disabled": false,
         "info": ""
     },
@@ -356,7 +363,7 @@
         "type": "function",
         "z": "4e76a40f.e01dbc",
         "name": "format Response",
-        "func": "var d = new Date();     // get server local time\nvar d1 = (\"0\"+d.getDate()).slice(-2)+\"-\";\nd1 += (\"0\"+(d.getMonth()+1)).slice(-2)+\"-\";\nd1 += d.getFullYear()+\" \";\nd1 += (\"0\"+d.getHours()).slice(-2)+\":\";\nd1 += (\"0\"+d.getMinutes()).slice(-2)+\":\";\nd1 += (\"0\"+d.getSeconds()).slice(-2);\n\nvar debug_msg = {};\nvar tcpResp = {};\nvar udpResp = {};\ndebug_msg.payload = {\n  'time': d1,\n  'from': msg.ip +\":\"+msg.port,\n  'Resp': msg.payload.slice (0,-1),\n  'info': msg.info\n}\n\nif (msg.ip == '127.0.0.1') {          // local host, debug only\n  debug_msg.payload.info = \"[sim] \" + msg.info;\n  tcpResp = null; udpResp = null; log_msg = null;\n} else if (msg.payload == \"debug\") {  // debug only\n  tcpResp = null; udpResp = null; log_msg = null;\n} else {\n  if (msg.proto == \"tcp\") {\n    tcpResp = msg; udpResp = null;\n    debug_msg.payload.from += \" [tcp]\";\n  } else {\n    tcpResp = null; udpResp = msg;\n    debug_msg.payload.from += \" [udp]\";\n  }\n}\nreturn [debug_msg, tcpResp, udpResp];",
+        "func": "var d = new Date();     // get server local time\nvar d1 = (\"0\"+d.getDate()).slice(-2)+\"-\";\nd1 += (\"0\"+(d.getMonth()+1)).slice(-2)+\"-\";\nd1 += d.getFullYear()+\" \";\nd1 += (\"0\"+d.getHours()).slice(-2)+\":\";\nd1 += (\"0\"+d.getMinutes()).slice(-2)+\":\";\nd1 += (\"0\"+d.getSeconds()).slice(-2);\n\nvar debug_msg = {}, tcpResp = {}, udpResp = {};\ndebug_msg.payload = {\n  'time': d1,\n  'from': msg.ip +\":\"+msg.port,\n  'Resp': msg.payload.slice (0,-1),\n  'info': msg.info\n}\n\nif (msg.ip == '127.0.0.1') {          // local host, debug only\n  debug_msg.payload.info = \"[sim] \" + msg.info;\n  tcpResp = null; udpResp = null;\n} else if (msg.payload == \"debug\") {  // debug only\n  tcpResp = null; udpResp = null;\n} else {\n  if (msg.proto == \"tcp\") {\n    tcpResp = msg; udpResp = null;\n    debug_msg.payload.from += \" [tcp]\";\n  } else {\n    tcpResp = null; udpResp = msg;\n    debug_msg.payload.from += \" [udp]\";\n  }\n}\nreturn [debug_msg, tcpResp, udpResp];",
         "outputs": 3,
         "noerr": 0,
         "x": 1047.6739616394043,
@@ -1190,7 +1197,7 @@
         "type": "debug",
         "z": "4e76a40f.e01dbc",
         "name": "dataOut",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -1840,6 +1847,175 @@
             [
                 "2a122c05.913a64"
             ]
+        ]
+    },
+    {
+        "id": "913708a6.2e9c58",
+        "type": "debug",
+        "z": "eb2c94ba.f33318",
+        "name": "logDebug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "x": 494.9999694824219,
+        "y": 123.33332824707031,
+        "wires": []
+    },
+    {
+        "id": "99bd73cd.aad8c",
+        "type": "udp in",
+        "z": "eb2c94ba.f33318",
+        "name": "udp 10721",
+        "iface": "",
+        "port": "10721",
+        "ipv": "udp4",
+        "multicast": "false",
+        "group": "",
+        "datatype": "utf8",
+        "x": 203.3333282470703,
+        "y": 126.6666488647461,
+        "wires": [
+            [
+                "913708a6.2e9c58"
+            ]
+        ]
+    },
+    {
+        "id": "2584afbd.67fdd",
+        "type": "tcp in",
+        "z": "eb2c94ba.f33318",
+        "name": "tcp 10723",
+        "server": "server",
+        "host": "",
+        "port": "10723",
+        "datamode": "stream",
+        "datatype": "utf8",
+        "newline": "\\n",
+        "topic": "tcpIN",
+        "base64": false,
+        "x": 196.66665649414062,
+        "y": 198.3333282470703,
+        "wires": [
+            [
+                "d0f9e877.ab6ea8"
+            ]
+        ]
+    },
+    {
+        "id": "d0f9e877.ab6ea8",
+        "type": "function",
+        "z": "eb2c94ba.f33318",
+        "name": "chkData-in",
+        "func": "var msg1 = {};  // error out\nvar msg2 = {};  // data out\nvar proto = \"udp\";\nif (msg.topic == \"tcpIN\") proto = \"tcp\"\nif (msg.payload === undefined || msg.payload.length === 0) {\n    msg1 = {\n        'proto': proto,\n        '_session': msg._session,\n\t\t'ip': msg.ip,\n\t\t'port': msg.port,\n\t\t'payload': \"debug\",\n\t\t'info': \"Error: Invalid Argument. [Raw:\"+msg.payload+\"]\"\n    }\n    msg2 = null;\n} else {\n    msg1 = null;\n    msg2 = {\n\t\t'payload': msg.payload,\n\t\t'remote': {\n\t\t    'proto': proto,\n\t\t    '_session': msg._session,\n\t\t\t'ip': msg.ip,\n\t\t\t'port': msg.port\n\t\t}\n    };\n}\nreturn [msg1,msg2];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 371.66666412353516,
+        "y": 198.33332633972168,
+        "wires": [
+            [
+                "472303bb.49761c"
+            ],
+            [
+                "aed05238.e59f8",
+                "735453c7.42f0bc"
+            ]
+        ]
+    },
+    {
+        "id": "aed05238.e59f8",
+        "type": "debug",
+        "z": "eb2c94ba.f33318",
+        "name": "dataIN_GW",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "x": 739.9999694824219,
+        "y": 296.6666603088379,
+        "wires": []
+    },
+    {
+        "id": "472303bb.49761c",
+        "type": "function",
+        "z": "eb2c94ba.f33318",
+        "name": "format Response",
+        "func": "var d = new Date();     // get server local time\nvar d1 = (\"0\"+d.getDate()).slice(-2)+\"-\";\nd1 += (\"0\"+(d.getMonth()+1)).slice(-2)+\"-\";\nd1 += d.getFullYear()+\" \";\nd1 += (\"0\"+d.getHours()).slice(-2)+\":\";\nd1 += (\"0\"+d.getMinutes()).slice(-2)+\":\";\nd1 += (\"0\"+d.getSeconds()).slice(-2);\n\nvar debug_msg = {};\nvar tcpResp = {};\nvar udpResp = {};\ndebug_msg.payload = {\n  'time': d1,\n  'from': msg.ip +\":\"+msg.port,\n  'Resp': msg.payload.slice (0,-1),\n  'info': msg.info\n}\n\nif (msg.ip == '127.0.0.1') {          // local host, debug only\n  debug_msg.payload.info = \"[sim] \" + msg.info;\n  tcpResp = null; udpResp = null;\n} else if (msg.payload == \"debug\") {  // debug only\n  tcpResp = null; udpResp = null;\n} else {\n  if (msg.proto == \"tcp\") {\n    tcpResp = msg; udpResp = null;\n    debug_msg.payload.from += \" [tcp]\";\n  } else {\n    tcpResp = null; udpResp = msg;\n    debug_msg.payload.from += \" [udp]\";\n  }\n}\nreturn [debug_msg, tcpResp, udpResp];",
+        "outputs": 3,
+        "noerr": 0,
+        "x": 1123.3332633972168,
+        "y": 191.66666793823242,
+        "wires": [
+            [
+                "4053ad76.6409b4"
+            ],
+            [
+                "c476bd92.efbc7"
+            ],
+            [
+                "92e9e121.abe82"
+            ]
+        ]
+    },
+    {
+        "id": "c476bd92.efbc7",
+        "type": "tcp out",
+        "z": "eb2c94ba.f33318",
+        "host": "",
+        "port": "",
+        "beserver": "reply",
+        "base64": false,
+        "end": false,
+        "name": "tcpResponse",
+        "x": 1374.999900817871,
+        "y": 171.66666412353516,
+        "wires": []
+    },
+    {
+        "id": "92e9e121.abe82",
+        "type": "udp out",
+        "z": "eb2c94ba.f33318",
+        "name": "udpResponse",
+        "addr": "",
+        "iface": "",
+        "port": "",
+        "ipv": "udp4",
+        "outport": "",
+        "base64": false,
+        "multicast": "false",
+        "x": 1384.999942779541,
+        "y": 213.3333282470703,
+        "wires": []
+    },
+    {
+        "id": "4053ad76.6409b4",
+        "type": "debug",
+        "z": "eb2c94ba.f33318",
+        "name": "Server resp-GW",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "x": 1386.6665687561035,
+        "y": 128.33333587646484,
+        "wires": []
+    },
+    {
+        "id": "735453c7.42f0bc",
+        "type": "function",
+        "z": "eb2c94ba.f33318",
+        "name": "extractData",
+        "func": "var d = new Date(); // get server local time\nvar msg1 = {};      // error out\nvar msg2 = {};      // data out\nvar splitData = msg.payload.split(',');\nif (splitData.length == 6) {\n  var attempt = parseInt (\"0x\" + splitData[5].slice(2,4));\n  var NoResp  = parseInt (\"0x\" + splitData[5].slice(6,8));\n  if (NoResp > attempt) NoResp = attempt;\n  msg1 = null;\n  msg2 = {\n    payload: {'deviceID': splitData[2]},\n    remote: msg.remote,\n    DEVdata: {\n      'timestamp':  d,\n      'RetryNr':    parseInt (splitData[0].slice(4)) - 5,\n      'rcvKey':     splitData[0].slice(0,4),\n      'FWversion':  splitData[1],\n      'devID':      splitData[2],\n      'data': {\n        'batt':     parseInt (\"0x\" + splitData[4].slice(0,2)),\n        'distance': parseInt(splitData[3]),\n        'tempC':    parseInt (\"0x\" + splitData[4].slice(2,4)),\n        'rh':       parseInt (\"0x\" + splitData[4].slice(4,6)),\n        'rainCnt':  ((parseInt (\"0x\" + splitData[4].slice(6,8)) << 8) + parseInt (\"0x\" + splitData[4].slice(8,10)))\n      },\n      'sts': {\n        'reboot':   ((parseInt (\"0x\" + splitData[5].slice(0,2)) & 0x80)?1:0),\n        'attempt':  attempt,\n        'DNSfail':  parseInt (\"0x\" + splitData[5].slice(4,6)),\n        'NoResp':   NoResp,\n        'iNetfail': parseInt (\"0x\" + splitData[5].slice(8,10)),\n        'errWiFi':  parseInt (\"0x\" + splitData[5].slice(10,12)),\n        'errHost':  parseInt (\"0x\" + splitData[5].slice(12,14))\n      }\n    }\n  };\n} else {\n  msg1 = {\n    'proto':    msg.remote.proto,\n    '_session': msg._session,\n    'ip':       msg.remote.ip,\n    'port':     msg.remote.port,\n    'payload':  \"11,invalid parameter\\n\",\n    'info':     \"Error: Invalid parameter. Raw: \" + msg.payload\n  }\n  msg2 = null;\n}\nreturn [msg1,msg2];",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 371.6666564941406,
+        "y": 261.6666564941406,
+        "wires": [
+            [],
+            []
         ]
     }
 ]

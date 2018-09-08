@@ -14,11 +14,11 @@ void updateData (void) {      // true: update success
   
   // URL: deviceID,distance,batt,TempC/RH,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
   sendURL = sysPara.DevID + "\r" + String(iNetTx.distanceCM) + "\r" + BYTE2HEX(iNetTx.BattLvl);
-#if (SENSOR_W > 0)
-  sendURL += BYTE2HEX(iNetTx.TempC) + BYTE2HEX(iNetTx.RH);
-#else
-  sendURL += "FFFF";
-#endif
+  if ((sysPara.NodeStatus&0x20) > 0) {
+    sendURL += BYTE2HEX(iNetTx.TempC) + BYTE2HEX(iNetTx.RH);
+  } else {
+    sendURL += "FFFF";
+  }
 
   uint16_t sendRainCnt  = RainCount;                    // freeze RainCount value
   TxData.accRainCount  += sendRainCnt;                  // accumulated rain counter

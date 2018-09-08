@@ -1,9 +1,5 @@
 #define stDEBUG             0               // Show Debug message
-#define SENSOR_W            2               // Weather Sensor:    0-not present, 1-SHT31, 2-BME280
 #define SENSOR_RAIN         1               // Rain Gauge Sensor: 0-not present, 1-present
-
-const char* Device_GroupID  = "IOT-0001";   // Complete DeviceID = Device_GroupID + Device_ID
-const char* Device_ID       = "D002";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
 
 #include "Node_Config.h"
 #include <avr/wdt.h>          // library for default watchdog functions
@@ -11,6 +7,8 @@ const char* Device_ID       = "D002";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
 #include <avr/sleep.h>        // library for sleep
 #include <avr/power.h>        // library for power control
 #include <NeoSWSerial.h>
+#include <I2C.h>
+#include <BME280_I2C.h>
 
 #define inRange(x, a, b) (((a) <= (x)) && ((x) <= (b)))     // define macro if (x>=a) && (x<=b)
 #define outRange(x, a, b) (((x) < (a)) || ((x) > (b)))      // define macro if (x<a) || (x>b)
@@ -18,16 +16,6 @@ const char* Device_ID       = "D002";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
 #define LEDon() digitalWrite(LED_BUILTIN, HIGH)
 #define LEDoff() digitalWrite(LED_BUILTIN, LOW)
 #define LEDflash() ({digitalWrite(LED_BUILTIN, HIGH); delay(10); digitalWrite(LED_BUILTIN, LOW);})
-
-// Sensor Module
-#if (SENSOR_W == 1)
-  #include "Adafruit_SHT31.h"
-  Adafruit_SHT31 sht31 = Adafruit_SHT31();
-#elif (SENSOR_W == 2)
-  #include <I2C.h>
-  #include <BME280_I2C.h>
-  BME280 myBME280;
-#endif 
 
 // Timers & Counters
 volatile uint16_t cntRemaining;               // how many times remain before wakeup and tx value, Volatile variable, to be able to modify in interrupt function
@@ -42,6 +30,7 @@ uint32_t wakeup_time  = 0;
 String iNETSerialmsg  = "";
 
 NeoSWSerial iNETSerial(ESP_RxPin, ESP_TxPin); // RX, TX
+BME280 myBME280;
 
 void(* resetFunc) (void) = 0;                 //declare reset function @address 0
 
@@ -71,7 +60,7 @@ void setup() {
     WakeUpInterval  = 120;      // device wake-up every 120s
     TxiNET_LowBatt  = 60;       // Send data to internet every 120min (WakeUpInterval x TxiNET_Normal)
     TxiNET_Normal   = 5;        // Send data to internet every 10min (WakeUpInterval x TxiNET_Normal)
-    T10dayCnt       = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
+    T30dayCnt       = 2592000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
     printDEBUG (F("[S] ====== SYSTEM INIT (WiFi Profile) ======"));
   } else {
     printDEBUG (F("[S] ====== SYSTEM INIT (3G Profile) ======"));
@@ -149,16 +138,11 @@ void resetTxData (void) {
 void getSensorData (void) {       // calculate average distance and get weather data
   getAvgDistance ();              // iNetTx.distanceCM and iNetTx.errType were updated
   float TempC = 127, RH = 127, Pa = 0;
-#if (SENSOR_W == 1)
-  TempC = sht31.readTemperature();
-  RH = sht31.readHumidity();
-#elif (SENSOR_W == 2)
   readBME280 (myBME280, TempC, Pa, RH);
   if (myBME280.ready < 1) {
     TempC = 127;
     RH    = 127;
   }
-#endif
   if (isnan(TempC)) TempC = 127;
   if (isnan(RH)) RH = 127;
   iNetTx.TempC = (uint8_t)TempC;
@@ -224,5 +208,3 @@ int get_rand_byte(void){
   }
   return n;
 }
-
-

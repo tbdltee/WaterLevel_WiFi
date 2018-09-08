@@ -1,3 +1,8 @@
+// =================================== Declaration ================================
+const char* Device_GroupID  = "IOT-0001";   // Complete DeviceID = Device_GroupID + Device_ID
+const char* Device_ID       = "D001";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
+
+// =================================== Paramteres ================================
 #define OTA_ATTEMPT_ALLOW   5               // ESP8266 http OTA: 0-disable, >0-#of OTA failure allow
 uint16_t AnalogValue      = 128;            // AnalogRead from ref. voltage. Start low and let auto calibation do the job
 uint16_t ActualVolt       = 412;            // Actual voltage at Battery from multi-meter x 100, e.g. 3.96 -> 396
@@ -9,7 +14,7 @@ uint8_t CMDdelayTime    = 5;            // delay time after wifi connected
 uint16_t WakeUpInterval = 300;          // device wake-up every 5min
 uint8_t TxiNET_LowBatt  = 120;          // Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
 uint8_t TxiNET_Normal   = 6;            // Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
-uint32_t T10dayCnt      = 864000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
+uint32_t T30dayCnt      = 2592000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
 
 // 3G-WiFi Modem info:
 // ssid/pass: IOT-0001D001-3G, DHCP-Off
@@ -77,4 +82,3 @@ struct iNetType {                 // data to send to Host
 #else
   #define printDEBUG(x)
 #endif
-

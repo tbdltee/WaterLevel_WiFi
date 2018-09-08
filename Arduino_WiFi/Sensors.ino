@@ -6,17 +6,14 @@ void Init_Peripheral() {
   pinMode(Sensor_Dpin, INPUT);
   pinMode(BattMeasurepin, INPUT);
   
-#if (SENSOR_W == 1)
-  if (sht31.begin(0x44)) printDEBUG ("[S] Temp/RH: SHT-31..Init OK");
-  sysPara.NodeStatus |= 0x20;
-#elif (SENSOR_W == 2)
   BME280_Init(myBME280);
-  if (myBME280.ready > 0) printDEBUG ("[S] Temp/RH: BME280..Init OK");
-  sysPara.NodeStatus |= 0x20;
-#else
-  printDEBUG ("[S] Temp/RH..not found");
-#endif
-  
+  if (myBME280.ready > 0) {
+    sysPara.NodeStatus |= 0x20;
+    printDEBUG ("[S] Temp/RH: BME280..Init OK");
+  } else {
+    printDEBUG ("[S] Temp/RH: BME280 not found");
+  }
+
   RainCount = 0;
 #if (SENSOR_RAIN == 1)
   printDEBUG ("[S] Rain Gauge..Init OK.");
@@ -27,7 +24,7 @@ void Init_Peripheral() {
 #else
   printDEBUG ("[S] Rain Gauge..not found.");
 #endif
-  printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) +"s, T10dayCnt: " + String(T10dayCnt) + "\r\n");
+  printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) +"s, T30dayCnt: " + String(T30dayCnt) + "\r\n");
 }
 
 uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
@@ -47,7 +44,7 @@ uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
     printDEBUG ("[S] Auto calibrate ADC: "+String(AnalogValue)+" to 4.20v");
   }
   
-  if (sysPara.AvalueCnt == T10dayCnt) {        // 10 days reached
+  if (sysPara.AvalueCnt == T30dayCnt) {        // 10 days reached
     if (sysPara.maxA10d > 0) {
       AnalogValue     = sysPara.maxA10d;
       ActualVolt      = 420;
@@ -123,7 +120,6 @@ uint16_t getDistanceSR04() {                          // Get distance (mm), sing
 }
 
 // ======================================== BME80 Sensor ================================
-#if (SENSOR_W == 2)
 void BME280_Init(BME280 &BME280Sensor) {        // Init_BME280 in Force Mode
   BME280Sensor.I2CAddress = 0x76;               // I2C Addr 0x77(default) or 0x76 and ignore SPI
   BME280Sensor.runMode = 1;                     // 0=Sleep, 1,2=Force mode, 3=Normal Mode
@@ -138,5 +134,3 @@ void BME280_Init(BME280 &BME280Sensor) {        // Init_BME280 in Force Mode
 void readBME280(BME280 &BME280Sensor, float &TempC, float &Pa, float &RH) {   //Asking sensor to measure data
   if (BME280Sensor.ready > 0) return BME280Sensor.getData (TempC, Pa, RH);
 }
-#endif
-
