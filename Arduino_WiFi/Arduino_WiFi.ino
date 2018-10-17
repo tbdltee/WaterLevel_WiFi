@@ -38,11 +38,11 @@ void(* resetFunc) (void) = 0;                 //declare reset function @address 
 void setup() {
   wdt_disable();
   delay (500);                                // startup delay to avoid power surge
-# if ((stDEBUG + BattCalibrate) > 0)
+# if (stDEBUG > 0)
   Serial.begin(57600);
 #endif
+
   pinMode (Profile_SEL_Pin,  INPUT_PULLUP);
-  
   pinMode (ESP_ENpin, OUTPUT);
   digitalWrite(ESP_ENpin, LOW);               // disable ESP8266
   pinMode (MODEM_ENpin, OUTPUT);
@@ -52,7 +52,7 @@ void setup() {
   pinMode (LED_BUILTIN, OUTPUT);
   LEDoff();
 
-  if (digitalRead (Profile_SEL_Pin) == LOW) { // chage from 3G to WiFi
+  if (digitalRead (Profile_SEL_Pin) == LOW) { // change from 3G to WiFi
     Device_Profile  = "WL";     // use WiFi Profile
     ModemWaitTime   = 0;        // wait for modem to power-up
     ModemPwrUpTime  = 50;       // total modem power-up time 50s
@@ -65,6 +65,7 @@ void setup() {
   } else {
     printDEBUG (F("[S] ====== SYSTEM INIT (3G Profile) ======"));
   }
+  pinMode (Profile_SEL_Pin,  INPUT);          // change pinMode to remove Internal R pullup
   
   randomSeed(get_rand_byte());
   iNetTx.seqNr = random(65536);
@@ -86,7 +87,17 @@ void loop(void) {
   uint16_t lowerRapid =  (PrevdistanceCM > LvlRapidCM) ? PrevdistanceCM - LvlRapidCM: 0;
   
   iNetTx.BattLvl = getBatt();                                         // get bettery level
-  
+  if (iNetTx.BattLvl <= BATTPowerOff) {                               // if Batt_PowerOff, set TxiNETcnt = 254 (never update iNET)
+    TxiNETcnt = 254;
+  } else {                                                            // if Batt_level above Batt_Power_Off
+    if (TxiNETcnt > 250) {
+      if (iNetTx.BattLvl <= BATTPowerSave) {
+        TxiNETcnt = TxiNET_LowBatt;
+      } else {
+        TxiNETcnt = TxiNET_Normal;
+      }
+    }
+  }
   measureDistanceCM ();                                               // single measure distance, every wake-up (3 min)
   if (TxData.lastCM  > 0) {
     if (TxData.lastCM > (PrevdistanceCM + LvlRapidCM)) {              // distance above threshold
@@ -99,7 +110,7 @@ void loop(void) {
         Rapidcnt = 128; nonRapidcnt = 0;
       }
     }
-    if (outRange (Rapidcnt, 125, 131)) {                              // if 3 consecutive rapid change, update inet
+    if (outRange (Rapidcnt, 125, 131)) {                              // if 3 consecutive rapid change, update inet/override BATTPowerOff
       TxiNETcnt = 0; Rapidcnt = 128;
       sysPara.NodeStatus |= 0x08;                                     // Set Rapid Update flag
     }
@@ -107,9 +118,7 @@ void loop(void) {
   printDEBUG ("[D] rangeCM-"+String(TxData.distanceIdx)+":"+String(TxData.lastCM)+", Batt:"+String(iNetTx.BattLvl)+", RainCnt:"+String(RainCount)+", TxiNETcnt:"+String(TxiNETcnt)+", Rapidcnt:"+String(Rapidcnt)+", ACnt:"+String(sysPara.AvalueCnt));
   if (TxiNETcnt == 0) {                                 // Send data to internet
     updateData ();
-    if (iNetTx.BattLvl < BATTPowerOff) {
-      TxiNETcnt = 254;                                  // if Batt_PowerOff, set TxiNETcnt = 254 (never update iNET)
-    } else if (iNetTx.BattLvl < BATTPowerSave) {
+    if (iNetTx.BattLvl <= BATTPowerSave) {
       TxiNETcnt = TxiNET_LowBatt;                       // if low batt, set TxInterval to TxiNET_LowBatt
     } else {
       TxiNETcnt = TxiNET_Normal;
@@ -126,6 +135,7 @@ void resetTxData (void) {
   iNetTx.distanceCM     = 0;
   iNetTx.TempC          = 127;
   iNetTx.RH             = 127;
+  iNetTx.hPAx100        = 0xFFFF;
   iNetTx.LvSampleRead   = 0;
   iNetTx.iNETattempt    = 0;
   iNetTx.iNETDNSfail    = 0;
@@ -140,13 +150,14 @@ void getSensorData (void) {       // calculate average distance and get weather 
   float TempC = 127, RH = 127, Pa = 0;
   readBME280 (myBME280, TempC, Pa, RH);
   if (myBME280.ready < 1) {
-    TempC = 127;
-    RH    = 127;
+    TempC = 127; RH = 127; Pa = 0;
   }
   if (isnan(TempC)) TempC = 127;
   if (isnan(RH)) RH = 127;
-  iNetTx.TempC = (uint8_t)TempC;
-  iNetTx.RH = (uint8_t)RH;
+  if (isnan(Pa)) Pa = 0;
+  iNetTx.TempC    = (uint8_t)((TempC == 127)?127:(TempC+40));
+  iNetTx.RH       = (uint8_t)RH;
+  iNetTx.hPAx100  = (uint16_t)(outRange(Pa, 50000, 115500)?0xFFFF:(Pa-50000.0));
 }
 
 String getValue(String data, char separator, int index) {

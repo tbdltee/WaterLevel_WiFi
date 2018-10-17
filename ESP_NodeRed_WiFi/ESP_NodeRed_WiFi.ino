@@ -70,6 +70,12 @@ void setup() {
       if (ESPstatus == 7) Serial.println ("C,Config ok," + String (ssid) + ","+String(pass));
       ESPstatus = 2;
       break;
+    } else if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      Serial.println ("C,Wifi connect error..NO SSID");
+      break;
+    } else if (WiFi.status() == WL_CONNECT_FAILED) {
+      Serial.println ("C,Wifi connect error..CONNECT FAIL");
+      break;
     }
     monitorSerial();
   }

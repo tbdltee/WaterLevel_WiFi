@@ -29,27 +29,25 @@ void Init_Peripheral() {
 
 uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
   uint16_t Avalue = analogRead(BattMeasurepin);
-  if (Avalue > sysPara.maxA10d) sysPara.maxA10d = Avalue;
-  uint16_t Battvolt = map(Avalue, 0, AnalogValue, 0, ActualVolt);
+  if (Avalue > AValue420) {
+    AValue420 = Avalue;
+    printDEBUG ("[S] Auto calibrate ADC: "+String(AValue420)+" to 4.20v");
+  }
+  if (Avalue > sysPara.maxA30d) sysPara.maxA30d = Avalue;
+  
+  uint16_t Battvolt = map(Avalue, 0, AValue420, 0, 420);
   uint8_t Battpct = 0;
   if (Battvolt < MIN_VOLT) {
     Battpct = 0;
   } else {
     Battpct = (uint8_t)map(Battvolt, MIN_VOLT, 420, 0, 100);
   }
-  if (Battpct > 100) {
-    Battpct = 100;
-    AnalogValue     = Avalue;
-    ActualVolt      = 420;
-    printDEBUG ("[S] Auto calibrate ADC: "+String(AnalogValue)+" to 4.20v");
-  }
   
-  if (sysPara.AvalueCnt == T30dayCnt) {        // 10 days reached
-    if (sysPara.maxA10d > 0) {
-      AnalogValue     = sysPara.maxA10d;
-      ActualVolt      = 420;
-      sysPara.maxA10d = Avalue;
-      printDEBUG ("[S] Auto calibrate ADC: "+String(AnalogValue)+" to 4.20v");
+  if (sysPara.AvalueCnt == T30dayCnt) {        // 30 days reached
+    if (sysPara.maxA30d > 0) {
+      AValue420       = sysPara.maxA30d;
+      sysPara.maxA30d = Avalue;
+      printDEBUG ("[S] Auto calibrate ADC: "+String(sysPara.maxA30d)+" to 4.20v");
     }
     sysPara.AvalueCnt = 0;
   } else {

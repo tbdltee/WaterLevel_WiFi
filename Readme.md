@@ -2,6 +2,9 @@
 This project is using HC-SR04p ultrasonic to measure the water level and send to internet dashboard (using node-red).
 
 ## Release History
+* 0040C
+  * Support Battery auto-calibration.
+  * Bug fixed when Tx come back from Power-Off state
 * 0040B
   * Use hardware jumpper to select between 3G and WiFi profile
   * Change WiFi update interval from 5 to 10 min
@@ -10,6 +13,8 @@ This project is using HC-SR04p ultrasonic to measure the water level and send to
   * device is sent with raw distance data. Water level is calculated on the server.
   * Support line notification
   * Support only BME280 to simplify the code. 
+  * Support hPA measurement from BME280
+  * Change tempC value from 0..100 to tempC+40 (0..125 -> -40..85) to support full range of BME280
 * 00400
   * release based on Water_Level_v4
 
@@ -24,6 +29,7 @@ Configure 3G-WiFi USB dongle for deivceID IOT-xxxxDyyy:
 * ssid: IOT-xxxxDyyy-3G
 * pass: IOT-xxxxDyyy-3G
 * ssid broadcast: off
+* Security Type: WPA2-Personal, WPA-algorithm: TKIP+AES
 * DHCP: off
 * 3G dongle IP/Subnet: 192.168.8.1/255.255.255.0
 

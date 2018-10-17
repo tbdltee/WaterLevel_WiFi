@@ -11,29 +11,13 @@ const char ConfigOKPage[] PROGMEM=R"=====(<!DOCTYPE html><html lang=en><head><me
 <title>WiFi Config</title></head><body><h2 style='text-align: center;'>WiFi Config</h2>
 <p>WiFi Config save sucessfully. System Restart.</p></body></html>)=====";
 
-void Connect2WiFi (void) {                            // connect to wifi network. ESPstate-in 2, ESPstateout 2 or 3(connected)
-  WiFi.mode (WIFI_STA);
-  if (String(ssid).length() > 0) WiFi.begin (ssid, pass);
-  uint32_t prevtime = millis();
-  while ((millis() - prevtime) < 15000) {
-    if (WiFi.status() == WL_CONNECTED) {
-      ESPstatus = 3;
-      return;
-    }
-    monitorSerial();
-  }
-  if (WiFi.status() == WL_NO_SSID_AVAIL) Serial.println ("C,Wifi connect error..NO SSID");
-  else if (WiFi.status() == WL_CONNECT_FAILED) Serial.println ("C,Wifi connect error..CONNECT FAIL");
-  else Serial.println ("C,Wifi connect error.." + String (WiFi.status()));
-}
-
-
+// ======================================= WiFi Confog Code start =====================================
 void startConfigPortal (uint32_t portalTimeout) {     // portalTimeout (sec)
   portalTimeout = portalTimeout * 1000L;
   ESPstatus = 5;                                      // enter config mode
   
   WiFi.mode (WIFI_AP_STA);
-  WiFi.softAP ("iotConfAP", "iot12345");              // start softAP with default IP:192.168.4.1
+  WiFi.softAP ("iotConfAP", "thaisolarway");          // start softAP with default IP:192.168.4.1
   server.on("/", sendConfigPage);
   server.on("/wifisave", sendSavePage);
   server.onNotFound([]() {server.send(200, "text/plain", F("Page not found."));});
@@ -96,8 +80,8 @@ void sendSavePage (void) {
     if (server.argName(i) == "s") strcpy (ssid, server.arg(i).c_str());
     if (server.argName(i) == "p") strcpy (pass, server.arg(i).c_str());
   }
-  ESPstatus = 3;
-  delay (3000);
+  ESPstatus = 6;
+  delay (500);
 }
 
 void SaveWiFiConfig (void) {          // save wifi info on byte 16..79

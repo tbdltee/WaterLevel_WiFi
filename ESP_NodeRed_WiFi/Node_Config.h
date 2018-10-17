@@ -1,5 +1,5 @@
 // =================== Declaration ======================
-const String  FW_version = "0040B";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
+const String  FW_version = "0040C";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
 const int     ledPin = 2;                 // GPIO2 of ESP8266
 
 const char* ServerHost  = "myiotdata.duckdns.org";
@@ -9,7 +9,7 @@ const char* fotaUrlBase = "myiotfota.duckdns.org";
 const int fotaPort      = 10720;
 
 /* =================== READ ME =======================
-IDE Config: Board-Generic ESP8266 Module, Flash Mode-DIO, Flash Size:-1M (no SPIFFS).
+IDE Config: Board-Generic ESP8266 Module, Flash Mode-QIO, Flash Size:-1M (no SPIFFS).
 ESP Response Code:
       0   - ESP inited and wait for ssid/pass
       1   - ssid/pass received. Connecting wifi with 3G
@@ -35,5 +35,6 @@ ESP Response Code:
     
 MongoDB server URL: myiotdata.duckdns.org:8080
 firmware URL:       myiotdata.duckdns.org:8080/.fota/ESP8xxxxx.bin
-HTTP response code: 1,newKey,[FOTA],0
+data format:        xxxxy,FWver,arduino Data        y:5-TCP, 6/7:UDP#retry
+response:           1,newKey,[FOTA],0
 =================== end of READ ME ======================= */

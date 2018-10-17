@@ -1,19 +1,18 @@
 // =================================== Declaration ================================
-const char* Device_GroupID  = "IOT-0001";   // Complete DeviceID = Device_GroupID + Device_ID
-const char* Device_ID       = "D001";       // xxx-3G/WL; 3G-Mobile, WL-Wifi
+const char* Device_GroupID  = "IOT-0001";   // Device_GroupID
+const char* Device_ID       = "D002";       // Device ID
 
 // =================================== Paramteres ================================
-#define OTA_ATTEMPT_ALLOW   5               // ESP8266 http OTA: 0-disable, >0-#of OTA failure allow
-uint16_t AnalogValue      = 128;            // AnalogRead from ref. voltage. Start low and let auto calibation do the job
-uint16_t ActualVolt       = 412;            // Actual voltage at Battery from multi-meter x 100, e.g. 3.96 -> 396
+#define OTA_ATTEMPT_ALLOW   5           // ESP8266 http OTA: 0-disable, >0-#of OTA failure allow
+uint16_t AValue420      = 128;          // AnalogRead value represent 4.20v. Start low and let auto calibation do the job
 
 String Device_Profile   = "3G";         // 3G profile parameter
 uint8_t ModemWaitTime   = 10;           // wait for modem to power-up
 uint8_t ModemPwrUpTime  = 75;           // total modem power-up time 75s
 uint8_t CMDdelayTime    = 5;            // delay time after wifi connected
 uint16_t WakeUpInterval = 300;          // device wake-up every 5min
-uint8_t TxiNET_LowBatt  = 120;          // Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
-uint8_t TxiNET_Normal   = 6;            // Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
+uint8_t TxiNET_LowBatt  = 120;          // Max:250, Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
+uint8_t TxiNET_Normal   = 6;            // Max:250, Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
 uint32_t T30dayCnt      = 2592000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
 
 // 3G-WiFi Modem info:
@@ -36,7 +35,7 @@ const uint8_t ESP_ENpin       = 9;            // ESP enabled (CHPD pin)
 const uint8_t MODEM_ENpin     = 10;           // 3G/4G enable pin
 
 // ============================= Threshold =============================
-const uint8_t BATTPowerSave   = 15;           // %Batt to operate in power save: TxInterval = 4 min
+const uint8_t BATTPowerSave   = 15;           // %Batt to operate in power save mode
 const uint8_t BATTPowerOff    = 5;            // %Batt to operate in power off
 const uint16_t MIN_VOLT       = 360;          // Minimum Volt shown as 0%
 const uint16_t LvlCMChange    = 10;           // Update data asap if levelCM change > 10 cm/min
@@ -48,7 +47,7 @@ struct sysParaType {                          // system parameters
   String  pass            = "";
   uint8_t NodeStatus      = 0x80;             // Node Status: 7654 3210, 7:node reboot, 6:Rain Sensor, 5:Weather sensor, 4:reserved, 3:Rapid Update, 2:Server-No response, 1/0: Send retry
   uint32_t AvalueCnt      = 0;                // Avalue counter, 1 cnt every 1665ms
-  uint16_t maxA10d        = 0;                // max Avalue during 10days period
+  uint16_t maxA30d        = 0;                // max Avalue during 30days period
   uint16_t WiFiConfTime   = 600;              // Wifi Config mode time-out, 5 min. Allow only after Arduino reset
 } sysPara;
 
@@ -63,8 +62,9 @@ struct iNetType {                 // data to send to Host
   uint8_t BattLvl       = 0;      // battery level 0..100
   uint8_t LvErrType     = 1;      // Error type 0-no error, 1-no data, 2-too few sample, 3-too high stdDV
   uint16_t distanceCM   = 0;
-  uint8_t TempC         = 127;
-  uint8_t RH            = 127;
+  uint8_t TempC         = 127;    // TempC+40 (-40..85) -> 0..125
+  uint8_t RH            = 127;    // 0..100
+  uint16_t hPAx100      = 0xFFFF; // PA-50000 (500.00..1155.00 hPA) -> 0..65500
   uint16_t accRainCount = 0;      // accumulated rain counter 0..0x7FFF + overflow flag (0x8000)
   uint16_t seqNr        = 0;      // iNET sequence number
   

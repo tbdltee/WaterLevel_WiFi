@@ -12,12 +12,12 @@ void updateData (void) {      // true: update success
   getSensorData();
   TxData.distanceIdx = 0;
   
-  // URL: deviceID,distance,batt,TempC/RH,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
+  // URL: deviceID,distance,batt,TempC/RH/hPaX100,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
   sendURL = sysPara.DevID + "\r" + String(iNetTx.distanceCM) + "\r" + BYTE2HEX(iNetTx.BattLvl);
-  if ((sysPara.NodeStatus&0x20) > 0) {
-    sendURL += BYTE2HEX(iNetTx.TempC) + BYTE2HEX(iNetTx.RH);
+  if ((sysPara.NodeStatus&0x20) > 0) {          // BME280 presented
+    sendURL += BYTE2HEX(iNetTx.TempC) + BYTE2HEX(iNetTx.RH) + uint16_t2HEX (iNetTx.hPAx100);
   } else {
-    sendURL += "FFFF";
+    sendURL += "FFFFFFFF";
   }
 
   uint16_t sendRainCnt  = RainCount;                    // freeze RainCount value
