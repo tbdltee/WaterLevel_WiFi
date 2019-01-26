@@ -2,7 +2,13 @@
 This project is using HC-SR04p ultrasonic to measure the water level and send to internet dashboard (using node-red).
 
 ## Release History
+* 0040D
+  * bugs fixed (Arduino) in RainCount debounce using millis(). millis() is not working while sleep. Change millis to Debounce_counter
+  * Rain_debounce_counter set to 150ms
+  * Timer adjustment
+  * Change method to get Batt level. Measure Vcc for stability and use Max A2-value as 100%. Decrease maxADC 50mV for every 7 days.
 * 0040C
+  * Measure ADC of internal reference 1.1v and calc back to A2-ADC.
   * Support Battery auto-calibration.
   * Bug fixed when Tx come back from Power-Off state
 * 0040B

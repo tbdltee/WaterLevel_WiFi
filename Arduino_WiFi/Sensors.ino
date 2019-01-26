@@ -8,7 +8,7 @@ void Init_Peripheral() {
   
   BME280_Init(myBME280);
   if (myBME280.ready > 0) {
-    sysPara.NodeStatus |= 0x20;
+    sysVar.NodeStatus |= 0x20;
     printDEBUG ("[S] Temp/RH: BME280..Init OK");
   } else {
     printDEBUG ("[S] Temp/RH: BME280 not found");
@@ -17,43 +17,57 @@ void Init_Peripheral() {
   RainCount = 0;
 #if (SENSOR_RAIN == 1)
   printDEBUG ("[S] Rain Gauge..Init OK.");
-  sysPara.NodeStatus |= 0x40;
+  sysVar.NodeStatus |= 0x40;
   pinMode(RainGauge_pin, INPUT_PULLUP);                 // Set INT0 back to input-pullup
-  INT0_DebounceTimer = millis();
   attachInterrupt(digitalPinToInterrupt(RainGauge_pin), RainGaugeCount, FALLING);
 #else
   printDEBUG ("[S] Rain Gauge..not found.");
 #endif
-  printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) +"s, T30dayCnt: " + String(T30dayCnt) + "\r\n");
+  printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) + "\r\n");
 }
 
-uint8_t getBatt(void) {           // map 3.60 -> 0%..4.20 -> 100% with min 0%
-  uint16_t Avalue = analogRead(BattMeasurepin);
-  if (Avalue > AValue420) {
-    AValue420 = Avalue;
-    printDEBUG ("[S] Auto calibrate ADC: "+String(AValue420)+" to 4.20v");
+uint8_t getBatt(void) {
+  uint16_t Avalue   = 0;                                                  // ADC 0..1023, read 64 loop => ADC value = 0..65472
+  uint16_t AmVolt   = 0;
+  uint16_t A11Value = readADC11();                                        // read ADC @1.1v reference  
+  uint16_t mVcc = map(1023, 0, A11Value, 0, 1100);                        // calculate Vcc
+
+  if (sysVar.maxAmVolt < 4100) sysVar.maxAmVolt = 4100;                   // init maxAmVolt to 4.10v as 100%
+  for (uint8_t i = 0; i < 64; i++) Avalue += analogRead(BattMeasurepin);
+  AmVolt = map (Avalue, 0, 65472, 0, mVcc) * 2;                           // Calculate A2 volt. x2 due to R-divider
+
+  if (BattreCalcnt >= Batt_Interval) {                                    // re-calibration counter expire,
+    BattreCalcnt = 0;
+    sysVar.maxAmVolt -= 50;                                               // reduce maxAmVolt 50mV
   }
-  if (Avalue > sysPara.maxA30d) sysPara.maxA30d = Avalue;
-  
-  uint16_t Battvolt = map(Avalue, 0, AValue420, 0, 420);
-  uint8_t Battpct = 0;
-  if (Battvolt < MIN_VOLT) {
-    Battpct = 0;
+  printDEBUG ("[B] Batt_cnt: "+ String(BattreCalcnt)+" ("+ String(Batt_Interval)+"), Vcc: "+ String(mVcc)+", A-mV: "+ String(AmVolt)+", Amax-mV: "+ String(sysVar.maxAmVolt));
+  if (AmVolt > sysVar.maxAmVolt) sysVar.maxAmVolt = AmVolt;
+  if ((AmVolt <= BATT_V000) || (mVcc < 3050)) {
+    return 0;  
   } else {
-    Battpct = (uint8_t)map(Battvolt, MIN_VOLT, 420, 0, 100);
+    return (uint8_t)map(AmVolt, BATT_V000, sysVar.maxAmVolt, 0, 100);
   }
-  
-  if (sysPara.AvalueCnt == T30dayCnt) {        // 30 days reached
-    if (sysPara.maxA30d > 0) {
-      AValue420       = sysPara.maxA30d;
-      sysPara.maxA30d = Avalue;
-      printDEBUG ("[S] Auto calibrate ADC: "+String(sysPara.maxA30d)+" to 4.20v");
-    }
-    sysPara.AvalueCnt = 0;
-  } else {
-    sysPara.AvalueCnt++;
-  }
-  return Battpct;
+}
+
+uint16_t readADC11() {          // set ADC reference to Vcc and read ADC of internal 1.1V reference
+  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+    ADMUX = _BV(MUX5) | _BV(MUX0);
+  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+    ADMUX = _BV(MUX3) | _BV(MUX2);
+  #else
+    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #endif  
+
+  delay(2);                         // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC);              // Start conversion
+  while (bit_is_set(ADCSRA,ADSC));  // measuring
+
+  uint8_t low  = ADCL;              // must read ADCL first - it then locks ADCH  
+  uint8_t high = ADCH;              // unlocks both
+  uint16_t result = (high<<8) | low;
+  return result;
 }
 
 void getAvgDistance (void) {
@@ -111,9 +125,9 @@ uint16_t getDistanceSR04() {                          // Get distance (mm), sing
   delayMicroseconds(10);
   digitalWrite(SR04_TRIGpin, LOW);
   delayMicroseconds(120);                             // delay at least 2cm (120 us pulse)
-  pulse_width = pulseIn(SR04_ECHOpin, HIGH, 23200);   // Returns the pulse width in uS or 0 if over 400 cm (23200 us pulse)
+  pulse_width = pulseIn(SR04_ECHOpin, HIGH, 23280);   // Returns the pulse width in uS or 0 if over 400 cm (23200 us pulse)
   result = (uint16_t)(((float)pulse_width)/58.2);     // return distance, cm
-  if (inRange(result, 3, 400)) return result;         // valid distance is 3-400cm 
+  if (inRange(result, 2, 400)) return result;         // valid distance is 3-400cm 
   return 0;
 }
 

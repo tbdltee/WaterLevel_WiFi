@@ -13,8 +13,8 @@ void updateData (void) {      // true: update success
   TxData.distanceIdx = 0;
   
   // URL: deviceID,distance,batt,TempC/RH/hPaX100,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
-  sendURL = sysPara.DevID + "\r" + String(iNetTx.distanceCM) + "\r" + BYTE2HEX(iNetTx.BattLvl);
-  if ((sysPara.NodeStatus&0x20) > 0) {          // BME280 presented
+  sendURL = sysVar.DevID + "\r" + String(iNetTx.distanceCM) + "\r" + BYTE2HEX(iNetTx.BattLvl);
+  if ((sysVar.NodeStatus&0x20) > 0) {          // BME280 presented
     sendURL += BYTE2HEX(iNetTx.TempC) + BYTE2HEX(iNetTx.RH) + uint16_t2HEX (iNetTx.hPAx100);
   } else {
     sendURL += "FFFFFFFF";
@@ -32,7 +32,7 @@ void updateData (void) {      // true: update success
   sendURL += "FFFF";
 #endif
 
-  sendURL += "\r" + BYTE2HEX(sysPara.NodeStatus);
+  sendURL += "\r" + BYTE2HEX(sysVar.NodeStatus);
   sendURL += BYTE2HEX(iNetTx.iNETattempt);
   sendURL += BYTE2HEX(iNetTx.iNETDNSfail);
   sendURL += BYTE2HEX(iNetTx.iNETNoResp);
@@ -40,7 +40,7 @@ void updateData (void) {      // true: update success
   sendURL += BYTE2HEX(iNetTx.iNETWififail);
   sendURL += BYTE2HEX(iNetTx.iNETHostfail);
   sendURL = String("6,1,") + sendURL;
-  sysPara.NodeStatus &= 0xF3;                     // Clear Rapid Update/No Reponse flag (bit 2,3)
+  sysVar.NodeStatus &= 0xF3;                     // Clear Rapid Update/No Reponse flag (bit 2,3)
   
   printDEBUG ("[N] Upload data...");
   
@@ -67,7 +67,7 @@ void updateData (void) {      // true: update success
       } else {
         counters++;                               // increase counter
       }
-      if (counters >= 5) return false;
+      if (counters >= 5) return;
     } else if (ESPstate == 2) {                   // sending data state
       printDEBUG ("[N] Sending data...");
       iNETSerial.println ("7," + String(OTAallowCnt));
@@ -85,12 +85,12 @@ void updateData (void) {      // true: update success
       if (result == 16) {                         // sent ok
         ESPstate = 11;                            // exit while {} with success
         resetTxData ();
-        sysPara.NodeStatus &= 0x7F;               // clear node reboot flag
+        sysVar.NodeStatus &= 0x7F;               // clear node reboot flag
         printDEBUG ("[N] Send OK");
       } else if (result == 31) {                  // OTA
         ESPstate = 5;
         resetTxData ();
-        sysPara.NodeStatus &= 0x7F;               // clear node reboot flag
+        sysVar.NodeStatus &= 0x7F;               // clear node reboot flag
         printDEBUG ("[N] Send OK");
         cntRemaining = 620;                       // ensure no watchdog reset during OTA
         totalTime    = 600000;                    // change total wait time to 300s
@@ -142,7 +142,7 @@ bool iNETPowerUp (void) {                       // Power-up ESP and wait for con
         timeCnt = 5;
       }
       if (monResult == 11) {                // ESP init received
-        String txt = sysPara.ssid+","+sysPara.pass+","+((Device_Profile=="WL")?((sysPara.WiFiConfTime>0)?"W1":"W0"):Device_Profile)+"," + sysPara.DevID+","+uint16_t2HEX(iNetTx.seqNr);
+        String txt = sysVar.ssid+","+sysVar.pass+","+((Device_Profile=="WL")?((sysVar.WiFiConfTime>0)?"W1":"W0"):Device_Profile)+"," + sysVar.DevID+","+uint16_t2HEX(iNetTx.seqNr);
         iNETSerial.println ("2," + txt);
         printDEBUG ("[N] Config sent...");
         ESPstate = 3;
@@ -152,12 +152,12 @@ bool iNETPowerUp (void) {                       // Power-up ESP and wait for con
         ESPstate = 4;
       }
     } else if (ESPstate == 4) {             // ESP config mode
-      if (sysPara.WiFiConfTime > 0) {       // if enter WiFi config for first use
-        PwrUpTime = (uint32_t)sysPara.WiFiConfTime * 1000.0;     // increase modem PwrUp Time
-        cntRemaining = sysPara.WiFiConfTime;                     // increase watchdog
+      if (sysVar.WiFiConfTime > 0) {       // if enter WiFi config for first use
+        PwrUpTime = (uint32_t)sysVar.WiFiConfTime * 1000.0;     // increase modem PwrUp Time
+        cntRemaining = sysVar.WiFiConfTime;                     // increase watchdog
       }
       if (monResult == 11) {                // ESP init received
-        String txt = sysPara.ssid+","+sysPara.pass+","+((Device_Profile=="WL")?((sysPara.WiFiConfTime>0)?"W1":"W0"):Device_Profile)+"," + sysPara.DevID+","+uint16_t2HEX(iNetTx.seqNr);
+        String txt = sysVar.ssid+","+sysVar.pass+","+((Device_Profile=="WL")?((sysVar.WiFiConfTime>0)?"W1":"W0"):Device_Profile)+"," + sysVar.DevID+","+uint16_t2HEX(iNetTx.seqNr);
         iNETSerial.println ("2," + txt);
         printDEBUG ("[N] Config sent...");
         ESPstate = 3;
@@ -176,7 +176,7 @@ bool iNETPowerUp (void) {                       // Power-up ESP and wait for con
     printDEBUG ("[N] Wifi connect error.");
     iNetTx.iNETWififail++;
   } else if (ESPstate == 11) {             // modem power-on successfully
-    sysPara.WiFiConfTime = 0;
+    sysVar.WiFiConfTime = 0;
     if (CMDdelayTime > 0) {
       printDEBUG ("[N] pause " + String(CMDdelayTime) +"s");
       timeCnt = CMDdelayTime;
@@ -230,7 +230,7 @@ uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for 
       if (iNETmsg.startsWith ("A,Sent OK-done")) {
         if (iNETmsg.startsWith ("A,Sent OK-done,15")) {
           iNetTx.iNETNoResp++;
-          sysPara.NodeStatus |= 0x40;                       // set No response bit
+          sysVar.NodeStatus |= 0x40;                       // set No response bit
         }
         return 16;
       }
@@ -252,8 +252,8 @@ uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for 
       if (iNETmsg.startsWith ("C,Enter wifi config mode"))  return 41;
       if (iNETmsg.startsWith ("C,Config time-out"))         return 42;
       if (iNETmsg.startsWith ("C,Config ok")) {
-        sysPara.ssid = getValue (iNETmsg, ',', 2);
-        sysPara.pass = getValue (iNETmsg, ',', 3);
+        sysVar.ssid = getValue (iNETmsg, ',', 2);
+        sysVar.pass = getValue (iNETmsg, ',', 3);
         return 43;
       }
       

@@ -1,6 +1,11 @@
-#define stDEBUG             0               // Show Debug message
+#define stDEBUG             0               // Show Debug message. 0-no debug
 #define SENSOR_RAIN         1               // Rain Gauge Sensor: 0-not present, 1-present
 
+// ============================ Node Info, SW version 0040D ===============================
+const char* Device_GroupID  = "IOT-0001";   // Device_GroupID
+const char* Device_ID       = "D002";       // Device ID
+
+// =================================== Library Declaration ================================
 #include "Node_Config.h"
 #include <avr/wdt.h>          // library for default watchdog functions
 #include <avr/interrupt.h>    // library for interrupts handling
@@ -19,13 +24,15 @@
 
 // Timers & Counters
 volatile uint16_t cntRemaining;               // how many times remain before wakeup and tx value, Volatile variable, to be able to modify in interrupt function
+volatile uint8_t cnt1secWDT = 0;              // Counter for 1 sec
 volatile uint16_t RainCount = 0;              // rain sensor counter
-volatile uint32_t INT0_DebounceTimer = 0;     // INT0 Debounce Timer
+volatile uint8_t INT0_btnCnt = 0;             // INT0 Debounce Counter 10x15 = 150ms, (millis() not working in sleep mode)
 
 uint8_t OTAallowCnt   = OTA_ATTEMPT_ALLOW;    // #OTA update failure before stop OTA. reset only when reboot Arduino
-uint8_t TxiNETcnt     = 0;                    // Counter to send data to internet.
+uint8_t TxiNETcnt     = 0;                    // Counter to send data to internet. 0-Send data, 1..254-counter, 255-never send, 
 uint8_t Rapidcnt      = 128;                  // Counter of rapid update
 uint8_t nonRapidcnt   = 0;                    // Counter of consecutive non-rapid count to reset Rapidcnt counter
+uint16_t BattreCalcnt = 0;                    // batt re-calibrate counter
 uint32_t wakeup_time  = 0;
 String iNETSerialmsg  = "";
 
@@ -58,13 +65,14 @@ void setup() {
     ModemPwrUpTime  = 50;       // total modem power-up time 50s
     CMDdelayTime    = 0;        // delay time after wifi connected
     WakeUpInterval  = 120;      // device wake-up every 120s
+    Batt_Interval   = 5040;    // Batt re-calibration interval: 5 040 x 120 = 604 800 sec = 7 days
     TxiNET_LowBatt  = 60;       // Send data to internet every 120min (WakeUpInterval x TxiNET_Normal)
     TxiNET_Normal   = 5;        // Send data to internet every 10min (WakeUpInterval x TxiNET_Normal)
-    T30dayCnt       = 2592000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
     printDEBUG (F("[S] ====== SYSTEM INIT (WiFi Profile) ======"));
   } else {
     printDEBUG (F("[S] ====== SYSTEM INIT (3G Profile) ======"));
   }
+  printDEBUG ("[S] DeviceID: " + sysVar.DevID);
   pinMode (Profile_SEL_Pin,  INPUT);          // change pinMode to remove Internal R pullup
   
   randomSeed(get_rand_byte());
@@ -74,28 +82,33 @@ void setup() {
   Init_Peripheral();
   Initialize_wdt();                           // configure with reset interval 1 sec and start the watchdog.
   resetTxData ();
-  sysPara.ssid = sysPara.DevID + "-" + String (Device_Profile);
-  sysPara.pass = sysPara.ssid;
+  sysVar.ssid = sysVar.DevID + "-" + String (Device_Profile);
+  sysVar.pass = sysVar.ssid;
 }
 
 void loop(void) {
   wakeup_time = millis();
   cntRemaining = WakeUpInterval * 1.2;
-  
+  BattreCalcnt++;
   uint16_t PrevdistanceCM = TxData.lastCM;                            // save current distance value before new distance measurement
   uint16_t LvlRapidCM = LvlCMChange * WakeUpInterval / 60;            // calc cm/min to cm threshold per measurement
   uint16_t lowerRapid =  (PrevdistanceCM > LvlRapidCM) ? PrevdistanceCM - LvlRapidCM: 0;
   
-  iNetTx.BattLvl = getBatt();                                         // get bettery level
+  iNetTx.BattLvl = getBatt();                                         // get %bettery
+  printDEBUG ("\r\nWake-up...RainCnt: " + String (RainCount) + ", maxA-mV: " + String(sysVar.maxAmVolt) + ", %Batt: " + String(iNetTx.BattLvl) + ", Batt_cnt: "+ String(BattreCalcnt));
+  
   if (iNetTx.BattLvl <= BATTPowerOff) {                               // if Batt_PowerOff, set TxiNETcnt = 254 (never update iNET)
-    TxiNETcnt = 254;
+    TxiNETcnt = 255;
+    printDEBUG ("[D] Power Off State...");
   } else {                                                            // if Batt_level above Batt_Power_Off
-    if (TxiNETcnt > 250) {
-      if (iNetTx.BattLvl <= BATTPowerSave) {
-        TxiNETcnt = TxiNET_LowBatt;
-      } else {
-        TxiNETcnt = TxiNET_Normal;
+    if (TxiNETcnt > 250) {                                            // if Batt in Power_off state, check wakeup condition?
+      if (iNetTx.BattLvl >= BATTPowerSave) {                          // if Batt Level above Power_Save, decrease counter
+        printDEBUG ("[D] Batt Power-Off receovery..." + String (TxiNETcnt - 251));
+      } else {                                                        // Tx in Power-Save with below Power_Save threshold
+        TxiNETcnt = 254;
+        printDEBUG ("[D] Batt Power-Off receovery-hold..." + String (TxiNETcnt - 251));
       }
+      if (TxiNETcnt == 251) TxiNETcnt = 0;                            // Batt above Power_Save for 4 consecutive WakeupInterval, send data to iNET
     }
   }
   measureDistanceCM ();                                               // single measure distance, every wake-up (3 min)
@@ -112,14 +125,16 @@ void loop(void) {
     }
     if (outRange (Rapidcnt, 125, 131)) {                              // if 3 consecutive rapid change, update inet/override BATTPowerOff
       TxiNETcnt = 0; Rapidcnt = 128;
-      sysPara.NodeStatus |= 0x08;                                     // Set Rapid Update flag
+      sysVar.NodeStatus |= 0x08;                                     // Set Rapid Update flag
     }
   }
-  printDEBUG ("[D] rangeCM-"+String(TxData.distanceIdx)+":"+String(TxData.lastCM)+", Batt:"+String(iNetTx.BattLvl)+", RainCnt:"+String(RainCount)+", TxiNETcnt:"+String(TxiNETcnt)+", Rapidcnt:"+String(Rapidcnt)+", ACnt:"+String(sysPara.AvalueCnt));
+  printDEBUG ("[D] rangeCM-"+String(TxData.distanceIdx)+":"+String(TxData.lastCM)+", Batt:"+String(iNetTx.BattLvl)+", RainCnt:"+String(RainCount)+", TxiNETcnt:"+String(TxiNETcnt)+", Rapidcnt:"+String(Rapidcnt));
   if (TxiNETcnt == 0) {                                 // Send data to internet
     updateData ();
+    
     if (iNetTx.BattLvl <= BATTPowerSave) {
       TxiNETcnt = TxiNET_LowBatt;                       // if low batt, set TxInterval to TxiNET_LowBatt
+      printDEBUG ("[D] Low Batt...");
     } else {
       TxiNETcnt = TxiNET_Normal;
     }
@@ -142,7 +157,7 @@ void resetTxData (void) {
   iNetTx.iNETSentfail   = 0;
   iNetTx.iNETWififail   = 0;
   iNetTx.iNETHostfail   = 0;
-  if ((sysPara.NodeStatus & 0x40) == 0) iNetTx.iNETNoResp = 0;
+  if ((sysVar.NodeStatus & 0x40) == 0) iNetTx.iNETNoResp = 0;
 }
 
 void getSensorData (void) {       // calculate average distance and get weather data

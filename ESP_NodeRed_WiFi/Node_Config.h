@@ -1,5 +1,5 @@
 // =================== Declaration ======================
-const String  FW_version = "0040C";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
+const String  FW_version = "0040D";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
 const int     ledPin = 2;                 // GPIO2 of ESP8266
 
 const char* ServerHost  = "myiotdata.duckdns.org";

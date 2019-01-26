@@ -1,23 +1,19 @@
-// =================================== Declaration ================================
-const char* Device_GroupID  = "IOT-0001";   // Device_GroupID
-const char* Device_ID       = "D002";       // Device ID
+/*  3G-WiFi Modem info:
+ *  ssid/pass: IOT-0001D001-3G, DHCP-Off
+ *  url:192.168.8.1, user: admin, pass:admin
+ */
 
 // =================================== Paramteres ================================
 #define OTA_ATTEMPT_ALLOW   5           // ESP8266 http OTA: 0-disable, >0-#of OTA failure allow
-uint16_t AValue420      = 128;          // AnalogRead value represent 4.20v. Start low and let auto calibation do the job
 
 String Device_Profile   = "3G";         // 3G profile parameter
 uint8_t ModemWaitTime   = 10;           // wait for modem to power-up
 uint8_t ModemPwrUpTime  = 75;           // total modem power-up time 75s
 uint8_t CMDdelayTime    = 5;            // delay time after wifi connected
 uint16_t WakeUpInterval = 300;          // device wake-up every 5min
+uint16_t Batt_Interval  = 2016;         // Batt re-calibration interval: 2016 x 300 = 604 800 sec = 7 days
 uint8_t TxiNET_LowBatt  = 120;          // Max:250, Send data to internet every 10hr (WakeUpInterval x TxiNET_Normal)
 uint8_t TxiNET_Normal   = 6;            // Max:250, Send data to internet every 30min (WakeUpInterval x TxiNET_Normal
-uint32_t T30dayCnt      = 2592000L/(uint32_t)WakeUpInterval;     // 10d = 864000sec
-
-// 3G-WiFi Modem info:
-// ssid/pass: IOT-0001D001-3G, DHCP-Off
-// url:192.168.8.1, user: admin, pass:admin
 
 // Sensor pin: |GND|Rain| |SR04_TRIG|SR04_ECHO|GND|A1|5V|3V3|
 // pin assignment
@@ -27,7 +23,7 @@ const uint8_t SR04_ECHOpin    = 4;
 const uint8_t Sensor_Dpin     = A1;
 const uint8_t Sensor_ENpin    = 11;
 const uint8_t BattMeasurepin  = A2;
-const uint8_t Profile_SEL_Pin = 6;            // Profile Select: 0-3G, 1-WiFi
+const uint8_t Profile_SEL_Pin = 6;            // Profile Select: 0-WiFi, 1-3G
 
 const uint8_t ESP_RxPin       = 7;            // to ESP Tx
 const uint8_t ESP_TxPin       = 8;            // to ESP Rx
@@ -35,21 +31,20 @@ const uint8_t ESP_ENpin       = 9;            // ESP enabled (CHPD pin)
 const uint8_t MODEM_ENpin     = 10;           // 3G/4G enable pin
 
 // ============================= Threshold =============================
-const uint8_t BATTPowerSave   = 15;           // %Batt to operate in power save mode
-const uint8_t BATTPowerOff    = 5;            // %Batt to operate in power off
-const uint16_t MIN_VOLT       = 360;          // Minimum Volt shown as 0%
+const uint8_t  BATTPowerSave  = 25;           // %Batt to operate in power save mode
+const uint8_t  BATTPowerOff   = 10;           // %Batt to operate in power off
+const uint16_t BATT_V000      = 3400;         // Batt mVolt as 0%Batt, 3.40v = Vcc 3.15v + 0.25v drop voltage
 const uint16_t LvlCMChange    = 10;           // Update data asap if levelCM change > 10 cm/min
-const uint32_t INT0_DEBOUNCE  = 50;           // INT0 debounce time, ms
 
+// ============================= Variable =============================
 struct sysParaType {                          // system parameters
   String DevID            = String(Device_GroupID) + String(Device_ID);
   String  ssid            = "";
   String  pass            = "";
-  uint8_t NodeStatus      = 0x80;             // Node Status: 7654 3210, 7:node reboot, 6:Rain Sensor, 5:Weather sensor, 4:reserved, 3:Rapid Update, 2:Server-No response, 1/0: Send retry
-  uint32_t AvalueCnt      = 0;                // Avalue counter, 1 cnt every 1665ms
-  uint16_t maxA30d        = 0;                // max Avalue during 30days period
+  uint8_t NodeStatus      = 0x80;             // Node Status: 7654 3210, 7:node reboot, 6:Rain Sensor-ready, 5:Weather sensor, 4:reserved, 3:Rapid Update, 2:Server-No response, 1/0: Send retry
   uint16_t WiFiConfTime   = 600;              // Wifi Config mode time-out, 5 min. Allow only after Arduino reset
-} sysPara;
+  uint16_t maxAmVolt      = 0;                // max mV of ADC value
+} sysVar;
 
 struct NodeDataType {
   uint16_t lastCM         = 0;                // lastast distanceCM
