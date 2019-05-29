@@ -2,23 +2,35 @@ void sendData2iNet (void) {
   String CMD = "", FWver = "";
   
   CMD = sentTCPdata ();
-  if (CMD.startsWith ("B,")||CMD.startsWith ("A,Sent OK,15,")) {  // tcp error try UDP
+  if (CMD.startsWith ("B,")||CMD.startsWith ("A,Sent OK,15,")) {  // tcp error or no response try UDP
     uint8_t retryNr = 1;
     while (retryNr < 3) {
       CMD = sentUDPdata (retryNr);
-      if (CMD.startsWith("A,Sent OK,15,")) {        // already wait 5s to response, no further delay required.
+      if (CMD.startsWith("A,Sent OK,15,")) {        // UDP response timeout retry
         retryNr++;
-      } else {
-        retryNr = 10;                               // exit while {}
+      } else {                                      // UDP sent success or error, exit
+        break;
       }
     }
   }
+/* CMD = "A,Sent OK,result
+ * result: 
+ *   0,sKey,0 --> OK
+ *   1,sKey,fotaFW,0 --> ok with fota
+ *   2,sKey,0 --> OK-node restart
+ *   11,invalid parameter,0
+ *   13,device not found,0
+ */
+  String rcvKeyOK = "";
+  if (CMD.startsWith ("A,Sent OK,")) {
+    rcvKeyOK = getValue (CMD, ',', 3);         // check received key
+    if (rcvKeyOK.startsWith(SEQNr)) rcvKeyOK = "OK";
+  }
   if (CMD.startsWith ("A,Sent OK,1,")) {            // required OTA
-    String rcvKey = getValue (CMD, ',', 3);         // check received key
     FWver = getValue (CMD, ',', 4);                 // new FW version
-    if (rcvKey.startsWith(SEQNr)) {
+    if (rcvKeyOK == "OK") {
       if ((FWver.length() == 5) && (FWver.charAt(0) == FW_version.charAt(0))) {
-        if (OTAFailcnt > 0) {
+        if (OTAallowCnt > 0) {
           CMD.replace ("A,Sent OK,","A,Sent OK-OTA,");
         } else {
           CMD.replace ("A,Sent OK,","A,Sent OK-done,OTA too many attempts,");
@@ -30,6 +42,9 @@ void sendData2iNet (void) {
       CMD.replace ("A,Sent OK,","A,Sent OK-done,OTA key mismatch,");
     }
   }
+  if ((CMD.startsWith ("A,Sent OK,2,")) && (rcvKeyOK=="OK")) {    // required node restart
+    CMD.replace ("A,Sent OK,","A,Sent OK-done,restart,");
+  }
   CMD.replace ("A,Sent OK,","A,Sent OK-done,");
   Serial.println (CMD);
   if (CMD.startsWith ("A,Sent OK-OTA,")) fwUpgrade (FWver);
@@ -39,7 +54,7 @@ void sendData2iNet (void) {
 String sentTCPdata (void) {                                 // return sever response
   WiFiClient tcpClient;
 
-  if (!tcpClient.connect(ServerHost, dataPort)) {           // host connected
+  if (!tcpClient.connect(Host_addr, dataPort)) {            // host connected
     Serial.println ("C,Host connect error.");
     return "B,6,Host connect error";
   }
@@ -50,7 +65,7 @@ String sentTCPdata (void) {                                 // return sever resp
   
   String result = "";
   uint32_t prevtime = millis();
-  while ((millis() - prevtime) < 5000) {                    // wait for TCP packet received for 5 sec
+  while ((millis() - prevtime) < 15000) {                  // wait for TCP packet received for 15 sec
     if (tcpClient.available()) {
       char a = tcpClient.read();
       if (a =='\0') continue;
@@ -80,13 +95,13 @@ String sentUDPdata (uint8_t RetryNr) {
   udpClient.write(udpData.c_str());
   if (!udpClient.endPacket()) {
     Serial.println ("failed");
-    return "B,5,Sent fail";
+    return "B,7,Sent UDP fail";
   }
   Serial.println ("ok");
   
   uint32_t prevtime = millis();
   int packetSize = 0;
-  while ((millis() - prevtime) < 3000) {                          // wait for UDP packet received for 3 sec
+  while ((millis() - prevtime) < 5000) {                          // wait for UDP packet received for 5 sec
     packetSize = udpClient.parsePacket();
     if (packetSize > 0) {
       int len = udpClient.read(incomingUDP, 255);
@@ -101,21 +116,23 @@ String sentUDPdata (uint8_t RetryNr) {
 
 void ResolveHostName (void) {
   IPAddress newHost_addr;
-  
   if (ESPstatus >= 10) {                                        // if wifi connected and CMD RCV
     ESPstatus = 10;
     uint8_t retry = 0;
     Serial.println ("C,Resolving Hostname...");
+    uint32_t starttime = millis();
     while ((retry < 3) && (ESPstatus == 10)) {
-      if (WiFi.hostByName(ServerHost, newHost_addr)) {          // Resolving host name
+      if (WiFi.hostByName(ServerHost, newHost_addr)) {          // Resolving host name OK
+        if ((millis() - starttime) < 250) delay (250);          // resolve success too fast. add some delay
         if (Host_addr == newHost_addr) {
-          Serial.println ("C,resolve ok-" + String (retry)+",same Host IP: " + Host_addr.toString());
+          Serial.println ("C,resolve ok-" + String (retry) + ",same HostIP: " + Host_addr.toString());
         } else {
+          Serial.println ("C,resolve ok-" + String (retry) + ",new HostIP: " + Host_addr.toString());
           Host_addr = newHost_addr;                             // Update Host IP with new IP address
           SaveHostAddr();
-          Serial.println ("C,resolve ok-" + String (retry)+",new Host IP: " + Host_addr.toString());
         }
         ESPstatus = 11;
+        break;
       } else {
         if (retry < 2) delay (5000);
       }
@@ -123,14 +140,14 @@ void ResolveHostName (void) {
     }
     if (ESPstatus == 10) {
       if (Host_addr == IPAddress(255,255,255,255)) {
-        Serial.println ("B,6,Hostname lookup error, no Host IP.");
+        Serial.println ("B,5,Host lookup error, no Host IP");
       } else {
         ESPstatus = 11;
         Serial.println ("C,resolve error,use " + Host_addr.toString());
       }
     }
   } else {
-    Serial.println ("B,4,Hostname lookup error,ESPstate-" + String(ESPstatus));
+    Serial.println ("B,5,Host lookup error,ESPstate-" + String(ESPstatus));
   }
 }
 
@@ -160,7 +177,7 @@ void fwUpgrade (String newFW_version) {
       Serial.println ("C,OTA err resolve hostname,skipped.");
       return;
     } else {
-      Serial.println ("C,cannot resolve OTA hostname. Using " + Host_addr.toString() + "\r\n");
+      Serial.println ("C,cannot resolve OTA hostname. Use " + Host_addr.toString() + "\r\n");
       otaHost_addr = Host_addr;                               // Update Host IP with new IP address
     }
   }
@@ -175,6 +192,11 @@ void fwUpgrade (String newFW_version) {
     case HTTP_UPDATE_OK:
       Serial.println("C,OTA OK.");            // may not called we reboot the ESP
       delay (500);
+      WiFi.disconnect ();
+      delay (1);
+      ESP.deepSleep (10000000L, WAKE_RF_DISABLED);
+      WiFi.forceSleepBegin();
+      delay (30000);
       ESP.restart();
       break;
   }

@@ -1,12 +1,31 @@
 # Wireless Water Level measurement
 This project is using HC-SR04p ultrasonic to measure the water level and send to internet dashboard (using node-red).
 
+## Firmware Upload Status (Arduino/ESP8266)
+
+* IOT001D0001 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
+* IOT001D0002 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
+* IOT001D0003 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
+
 ## Release History
+* 0040E
+  * Support remote reboot device from Dashboard
 * 0040D
-  * bugs fixed (Arduino) in RainCount debounce using millis(). millis() is not working while sleep. Change millis to Debounce_counter
+  * fixed: WiFiConfig portal handling
+	* WiFiConfig redirect page to root if page not found.
+	* WiFiConfig portal show WiFi signal strength bar instead of text
+	* ESP is now graceful shutdown. Make WiFi connection more stable.
+	* Increase TCP timeout from 10s to 15s
+	* Increase UDP timeout from 3s to 5s
+	* restart node if cannot connect to internet for 1 day.
+  * 3G TxiNET_LowBatt from 10 hrs to 6 hrs.
+  * bugs fixed (Arduino) in RainCount debounce using millis(). millis() is not working while sleep. Change millis() to Debounce_counter
+	* bugs fixed (Arduino) in %Batt calculation. limited min/max Volt to 3400/4100.
+	* Arduino: Sent lastCM to internet instead of average value. Last 5 values use for STD DV calculation.
   * Rain_debounce_counter set to 150ms
   * Timer adjustment
   * Change method to get Batt level. Measure Vcc for stability and use Max A2-value as 100%. Decrease maxADC 50mV for every 7 days.
+	* Increase Batt_0% from 3.4v to 3.6v to increase stability at low batt mode
 * 0040C
   * Measure ADC of internal reference 1.1v and calc back to A2-ADC.
   * Support Battery auto-calibration.

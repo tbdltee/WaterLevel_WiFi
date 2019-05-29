@@ -3,25 +3,23 @@ void Init_Peripheral() {
   digitalWrite(SR04_TRIGpin, LOW);
   pinMode(SR04_ECHOpin, INPUT);
   
-  pinMode(Sensor_Dpin, INPUT);
   pinMode(BattMeasurepin, INPUT);
-  
   BME280_Init(myBME280);
   if (myBME280.ready > 0) {
     sysVar.NodeStatus |= 0x20;
-    printDEBUG ("[S] Temp/RH: BME280..Init OK");
+    printDEBUG ("[S] Temp/RH: BME280..OK");
   } else {
-    printDEBUG ("[S] Temp/RH: BME280 not found");
+    printDEBUG ("[S] Temp/RH: no BME280");
   }
 
   RainCount = 0;
 #if (SENSOR_RAIN == 1)
-  printDEBUG ("[S] Rain Gauge..Init OK.");
+  printDEBUG ("[S] Rain Gauge..OK");
   sysVar.NodeStatus |= 0x40;
   pinMode(RainGauge_pin, INPUT_PULLUP);                 // Set INT0 back to input-pullup
   attachInterrupt(digitalPinToInterrupt(RainGauge_pin), RainGaugeCount, FALLING);
 #else
-  printDEBUG ("[S] Rain Gauge..not found.");
+  printDEBUG ("[S] no Rain Gauge.");
 #endif
   printDEBUG ("[S] WakeUpInterval: " + String(WakeUpInterval) + "\r\n");
 }
@@ -35,14 +33,14 @@ uint8_t getBatt(void) {
   if (sysVar.maxAmVolt < 4100) sysVar.maxAmVolt = 4100;                   // init maxAmVolt to 4.10v as 100%
   for (uint8_t i = 0; i < 64; i++) Avalue += analogRead(BattMeasurepin);
   AmVolt = map (Avalue, 0, 65472, 0, mVcc) * 2;                           // Calculate A2 volt. x2 due to R-divider
-
   if (BattreCalcnt >= Batt_Interval) {                                    // re-calibration counter expire,
     BattreCalcnt = 0;
     sysVar.maxAmVolt -= 50;                                               // reduce maxAmVolt 50mV
   }
-  printDEBUG ("[B] Batt_cnt: "+ String(BattreCalcnt)+" ("+ String(Batt_Interval)+"), Vcc: "+ String(mVcc)+", A-mV: "+ String(AmVolt)+", Amax-mV: "+ String(sysVar.maxAmVolt));
+  
   if (AmVolt > sysVar.maxAmVolt) sysVar.maxAmVolt = AmVolt;
-  if ((AmVolt <= BATT_V000) || (mVcc < 3050)) {
+  // printDEBUG ("[B] Batt_cnt: "+ String(BattreCalcnt)+" ("+ String(Batt_Interval)+"), Vcc: "+ String(mVcc)+", A-mV: "+ String(AmVolt)+", Amax-mV: "+ String(sysVar.maxAmVolt));
+  if (AmVolt <= BATT_V000) {
     return 0;  
   } else {
     return (uint8_t)map(AmVolt, BATT_V000, sysVar.maxAmVolt, 0, 100);
@@ -72,47 +70,38 @@ uint16_t readADC11() {          // set ADC reference to Vcc and read ADC of inte
 
 void getAvgDistance (void) {
   uint8_t i, countDistance1 = 0;
-  uint16_t sumDistance = 0, minDistance, maxDistance;
+  uint16_t sumDistance = 0, sumErr = 0;
   
   iNetTx.LvSampleRead = TxData.distanceIdx;
+  if (TxData.distanceIdx > 5) TxData.distanceIdx = 5;
   for (i = 0; i < TxData.distanceIdx; i++) {
     if (TxData.distanceCM[i] > 0) {
       sumDistance += TxData.distanceCM[i];
       countDistance1++;
+      if (TxData.lastCM > TxData.distanceCM[i]) sumErr += (TxData.lastCM - TxData.distanceCM[i]);
+      else sumErr += (TxData.distanceCM[i] - TxData.lastCM);
     }
   }
-  iNetTx.distanceCM = 0;
   if (countDistance1 == 0) {
-    iNetTx.LvErrType = 1;                       // cannot read distance
-    return;
-  }
-  iNetTx.distanceCM = (uint16_t)((float)(sumDistance)/(float)(countDistance1));  // get averge distance in cm
-  if (countDistance1 <= 4) {
-    iNetTx.LvErrType = 2;                     // too low #sample
-    return;
-  }
-  minDistance = (uint16_t)((float)iNetTx.distanceCM * 0.95);
-  maxDistance = (uint16_t)((float)iNetTx.distanceCM * 1.05);
-  uint8_t countDistance2 = 0;
-  sumDistance = 0;
-  for (i = 0; i < TxData.distanceIdx; i++) {
-    if (inRange(TxData.distanceCM[i], minDistance, maxDistance)) {
-      sumDistance += TxData.distanceCM[i];
-      countDistance2++;
-    }
-  }
-  iNetTx.distanceCM = (uint16_t)((float)(sumDistance)/(float)(countDistance2));  // get averge distance in mm
-  float pctValid = (float)(countDistance2)/(float)(countDistance1);                 // get % valid data
-  if (pctValid < 0.6) {                                                           // too high standard deviation
-    iNetTx.LvErrType = 3;
+    iNetTx.distanceCM = 0;
+    iNetTx.LvErrType = 1;                         // cannot read distance
   } else {
-    iNetTx.LvErrType = 0;
+    iNetTx.distanceCM = TxData.lastCM;            // send lastCM
+    if (countDistance1 <= 3) {
+      iNetTx.LvErrType = 2;                       // too low #sample
+    } else {
+      if ((sumErr * 2) > sumDistance) {           // Err > 50% - too high standard deviation
+        iNetTx.LvErrType = 3;
+      } else {
+        iNetTx.LvErrType = 0;
+      }
+    }
   }
 }
 
 void measureDistanceCM(void) {                                // main function to get distance from short range and long range sensor
-  TxData.lastCM = getDistanceSR04 ();                         // get distance from HC-SR04
-  TxData.distanceCM[TxData.distanceIdx] = TxData.lastCM; 
+  TxData.lastCM = getDistanceSR04();                          // get distance from HC-SR04
+  TxData.distanceCM[TxData.distanceIdx % 5] = TxData.lastCM;  // keep only last 5 samples
   TxData.distanceIdx++;
 }
 

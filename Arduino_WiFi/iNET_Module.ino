@@ -1,16 +1,19 @@
-void updateData (void) {      // true: update success
+void updateData (void) {
   String sendURL = "";
   uint8_t result = 0;
   
-  iNetTx.iNETattempt++;
-  iNetTx.seqNr++;
-  if (iNETPowerUp() == false) {
-    TxData.distanceIdx = 0;
-    return;
-  }
-  iNETSerialmsg = "";
+  iNetTx.iNETattempt++;               //  increase attempt counter
+  iNetTx.seqNr++;                     //  increase Seq Nr.
+  iNETSerialmsg = "";                 //  Clear serial buffer
   getSensorData();
   TxData.distanceIdx = 0;
+  if (iNETPowerUp() == false) {       // powerup error, increase system restart counter
+    iNetRstCnt++;
+    printDEBUG (F("[N] => Power-up modem..ERROR"));
+    return;
+  }
+  printDEBUG (F("[N] => Power-up modem..OK"));
+  iNetRstCnt = 0;                     // powerup ok, reset system restart counter
   
   // URL: deviceID,distance,batt,TempC/RH/hPaX100,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
   sendURL = sysVar.DevID + "\r" + String(iNetTx.distanceCM) + "\r" + BYTE2HEX(iNetTx.BattLvl);
@@ -40,71 +43,68 @@ void updateData (void) {      // true: update success
   sendURL += BYTE2HEX(iNetTx.iNETWififail);
   sendURL += BYTE2HEX(iNetTx.iNETHostfail);
   sendURL = String("6,1,") + sendURL;
-  sysVar.NodeStatus &= 0xF3;                     // Clear Rapid Update/No Reponse flag (bit 2,3)
   
+  sysVar.NodeStatus &= 0xF3;                     // Clear Rapid Update/No Reponse flag (bit 2,3)
   printDEBUG ("[N] Upload data...");
   
   uint8_t ESPstate = 0, counters = 0;
-  uint32_t prevtime = millis(), totalTime = 60000;
+  uint32_t prevtime = millis(), totalTime = 60000L;
   while (((millis() - prevtime) < totalTime) && (ESPstate < 10)) {    // allow 60s to send data
-    if (ESPstate == 4) {                          // DNS ok, wait for response, triple flash
-      result = monitoriNET (1000);
-      LEDflash(); delay (100); LEDflash(); delay (100); LEDflash();
-    } else if (ESPstate == 5) {                   // OTA state, fast flash
-      result = monitoriNET (250);
-      LEDflash();
-    } else {                                      // wait for DNS,double flash
-      result = monitoriNET (1000);
-      LEDflash(); delay (100); LEDflash();
+    result = monitoriNET ((ESPstate == 5)?250:1000);
+    LEDflash();
+    if (ESPstate != 5) {                          // wait for response, double flash
+      delay (100); LEDflash();
+      if (ESPstate == 4) {                        // DNS ok, wait for response, triple flash
+        delay (100); LEDflash();
+      }
     }
     if (ESPstate == 0) {                          // sending data state
       iNETSerial.println (sendURL);
       ESPstate = 1;                               // data sent completed
       counters = 0;
-    } else if (ESPstate == 1) {                   // sending data state
-      if (result == 15) {                         // "A,CMD RCV"
-        ESPstate = 2;
-      } else {
-        counters++;                               // increase counter
+    } else if (ESPstate == 1) {                   // sending data state, wait for A,CMD RCV for 5 sec
+      if (result == 15) ESPstate = 2;             // "A,CMD RCV"
+      else counters++;                            // increase counter
+      if (counters >= 5) {
+        iNETPowerDown(2);                         // Power-down internet Module
+        return;
       }
-      if (counters >= 5) return;
     } else if (ESPstate == 2) {                   // sending data state
       printDEBUG ("[N] Sending data...");
-      iNETSerial.println ("7," + String(OTAallowCnt));
+      iNETSerial.println ("7," + String((OTAallowCnt > OTA_ATTEMPT_ALLOW)?0:OTAallowCnt));
       ESPstate = 3;
-    } else if (ESPstate == 3) {                   // data sent, wait for dns resolver
-      if (result == 17) {                         // DNS resolve ok
-        ESPstate = 4;
-      } else if (inRange (result, 21, 28)) {      // Error result
-        iNetTx.iNETHostfail++;
-        iNetTx.iNETSentfail++;
+    } else if (ESPstate == 3) {                   // data sent, wait for DNS response
+      if (result == 17) ESPstate = 4;
+      else if (inRange (result, 21, 28)) {        // Error result
         printDEBUG ("[N] Send Error");
         ESPstate = 12;                            // exit while {} with error
       }
-    } else if (ESPstate == 4) {                   // DNS ok, wait for server response
-      if (result == 16) {                         // sent ok
+    } else if (ESPstate == 4) {                   // data sent, wait for esp response
+      if ((result == 16)||(result == 18)||(result == 19)) {     // sent ok with no OTA or OTA rejected
+        if (OTAallowCnt > OTA_ATTEMPT_ALLOW) OTAallowCnt--;        // if OTAallow in grace period, decrease OTA counter
         ESPstate = 11;                            // exit while {} with success
         resetTxData ();
-        sysVar.NodeStatus &= 0x7F;               // clear node reboot flag
+        sysVar.NodeStatus &= 0x7F;                // clear node reboot flag
         printDEBUG ("[N] Send OK");
-      } else if (result == 31) {                  // OTA
+      } else if (result == 31) {                  // sent ok with OTA in-progress
         ESPstate = 5;
         resetTxData ();
-        sysVar.NodeStatus &= 0x7F;               // clear node reboot flag
-        printDEBUG ("[N] Send OK");
+        sysVar.NodeStatus &= 0x7F;                // clear node reboot flag
+        printDEBUG ("[N] Send OK-OTA");
         cntRemaining = 620;                       // ensure no watchdog reset during OTA
-        totalTime    = 600000;                    // change total wait time to 300s
+        totalTime    = 600000L;                   // change total wait time to 300s
       } else if (inRange (result, 21, 28)) {      // Error result
-        iNetTx.iNETHostfail++;
-        iNetTx.iNETSentfail++;
-        printDEBUG ("[N] Send Error");
         ESPstate = 12;                            // exit while {} with error
+        printDEBUG ("[N] Send Error");
       }
-    } else if (ESPstate == 5) {                   // OTA
+    } else if (ESPstate == 5) {                   // OTA in-progress
       if ((result == 33) && (OTAallowCnt > 0)) {  // OTA failed
         OTAallowCnt--;
         ESPstate = 11;
-        printDEBUG ("[N] OTA error.");
+        if (OTAallowCnt == 0) {                   // too many OTA error, wait for i1 day to reset OTA allow counter
+          OTAallowCnt = iNET_ERR_RST;
+          printDEBUG ("[N] OTA error. Wait 1 day.");
+        } else printDEBUG ("[N] OTA error.");
       } else if ((result == 11) || (result == 32)) {    // OTA success
         OTAallowCnt = OTA_ATTEMPT_ALLOW;
         ESPstate = 13;
@@ -112,58 +112,82 @@ void updateData (void) {      // true: update success
       }
     }
   }
+  /* ESPstate
+   *  11 - Send OK
+   *  12 - Send Error
+   *  13 - Send OK with OTA success
+   */
   iNETPowerDown(5);                             // Power-down internet Module
+  if (result == 19) {delay(500); resetFunc();}
 }
 
 bool iNETPowerUp (void) {                       // Power-up ESP and wait for connection
   uint8_t ESPstate = 0, timeCnt = 0, monResult = 0, hostErr = 0;
   uint32_t PwrUpTime = (uint32_t)ModemPwrUpTime * 1000.0;
-  
-  printDEBUG ("[N] Power-up modem.");
+/* ESPstate
+ * 0  - init
+ * 1  - ESP enabled.
+ * 2  - Wait for ESP init messaage
+ * 3  - Wait for WiFi connection
+ * 4  - Enter Wifi Config mode
+ * 11 - Wifi Connected
+ * 21 - Wifi Config portal time-out
+ * 22 - WiFi connect error
+ */
+  printDEBUG ("[N] => Power-up modem.");
   if (Device_Profile=="3G") digitalWrite(MODEM_ENpin, HIGH);
   ESPstate = 1;                             // Powering-up modem
   timeCnt = ModemWaitTime;                  // wait for a while before start ESP
   uint32_t starttime = millis();
   while (((millis() - starttime) < PwrUpTime) && (ESPstate < 10)) {   // loop for 50sec
-    LEDflash ();
-    if (ESPstate == 4) {
-      delay (100); LEDflash ();
+    if (ESPstate == 4) {                    // if ESP in config mode, toggle LED
+      LEDtoggle ();
+    } else {
+      LEDflash ();
     }
     monResult = monitoriNET (1000);
-    if (ESPstate == 1) {                    // power-up modem state
+    if (monResult == 14) {
+      ESPstate = 22; break;
+    }
+    if (ESPstate == 1) {                          // power-up modem state
       if (timeCnt == 0) {
         digitalWrite(ESP_ENpin, HIGH);
         timeCnt = 3;
-        ESPstate = 2;                       // move to Powering-up ESP state
+        ESPstate = 2;                             // move to Powering-up ESP state
       }
-    } else if (inRange(ESPstate,2,3)) {     // Powering-up ESP state
+    } else if (inRange(ESPstate,2,3)) {           // Powering-up ESP state
       if ((timeCnt == 0) && (ESPstate == 2)) {    // iNet monitor time-out
-        iNETSerial.println ("0,status");    // request status
+        iNETSerial.println ("0,status");          // request status
         timeCnt = 5;
       }
-      if (monResult == 11) {                // ESP init received
+      if (monResult == 11) {                      // ESP init received
         String txt = sysVar.ssid+","+sysVar.pass+","+((Device_Profile=="WL")?((sysVar.WiFiConfTime>0)?"W1":"W0"):Device_Profile)+"," + sysVar.DevID+","+uint16_t2HEX(iNetTx.seqNr);
         iNETSerial.println ("2," + txt);
         printDEBUG ("[N] Config sent...");
         ESPstate = 3;
-      } else if (monResult == 12) {         // wifi connected received
-        ESPstate = 11;                      // exit while {}
-      } else if (monResult == 41) {         // ESP enter config mode
+      } else if (monResult == 12) {                             // wifi connected received
+        ESPstate = 11;                                          // exit while {}
+      } else if (monResult == 41) {                             // ESP enter config mode
         ESPstate = 4;
       }
-    } else if (ESPstate == 4) {             // ESP config mode
-      if (sysVar.WiFiConfTime > 0) {       // if enter WiFi config for first use
+    } else if (ESPstate == 4) {                                 // ESP in config mode
+      if (sysVar.WiFiConfTime > 0) {                            // if enter WiFi config for first use
         PwrUpTime = (uint32_t)sysVar.WiFiConfTime * 1000.0;     // increase modem PwrUp Time
         cntRemaining = sysVar.WiFiConfTime;                     // increase watchdog
       }
-      if (monResult == 11) {                // ESP init received
+      if (monResult == 11) {                                    // ESP init received
+        sysVar.WiFiConfTime = 0;
+        PwrUpTime = (uint32_t)ModemPwrUpTime * 1000.0;
+        starttime = millis();
         String txt = sysVar.ssid+","+sysVar.pass+","+((Device_Profile=="WL")?((sysVar.WiFiConfTime>0)?"W1":"W0"):Device_Profile)+"," + sysVar.DevID+","+uint16_t2HEX(iNetTx.seqNr);
         iNETSerial.println ("2," + txt);
-        printDEBUG ("[N] Config sent...");
+        printDEBUG (F("[N] New Config sent..."));
         ESPstate = 3;
-      } else if (monResult == 12) {         // Wifi connected
-        ESPstate = 11;                      // exit while {}
-      } else if (monResult == 42) {         // Config portal time-out
+      } else if (monResult == 12) {               // Wifi connected
+        ESPstate = 11;                            // exit while {}
+      } else if (monResult == 42) {               // Config portal time-out
+        ESPstate = 21;
+      } else if (monResult == 44) {               // Config portal error
         ESPstate = 21;
       }
     }
@@ -171,11 +195,14 @@ bool iNETPowerUp (void) {                       // Power-up ESP and wait for con
   }
   
   if (ESPstate == 2) {
-    printDEBUG ("[N] ESP init error.");
-  } else if ((ESPstate == 3)||(ESPstate > 20)) {
-    printDEBUG ("[N] Wifi connect error.");
+    printDEBUG (F("[N] ESP init error."));
     iNetTx.iNETWififail++;
-  } else if (ESPstate == 11) {             // modem power-on successfully
+  } else if ((ESPstate == 3) || (ESPstate > 20)) {
+    printDEBUG (F("[N] Wifi connect error."));
+    iNetTx.iNETWififail++;
+  } else if ((ESPstate == 4) || (ESPstate == 21)) {
+    printDEBUG (F("[N] Wifi Config time-out."));
+  } else if (ESPstate == 11) {             // modem power-on successfully, pause for CMDdelayTime sec
     sysVar.WiFiConfTime = 0;
     if (CMDdelayTime > 0) {
       printDEBUG ("[N] pause " + String(CMDdelayTime) +"s");
@@ -189,7 +216,7 @@ bool iNETPowerUp (void) {                       // Power-up ESP and wait for con
     LEDoff ();                             // turn-off LED
     return true;
   } else {
-    printDEBUG ("[N] Error ESP state: " + String (ESPstate));
+    printDEBUG ("[N] Time-out @ESP state: " + String (ESPstate));
   }
   iNetTx.iNETSentfail++;
   iNETPowerDown(ESPstate);
@@ -198,71 +225,11 @@ bool iNETPowerUp (void) {                       // Power-up ESP and wait for con
 
 void iNETPowerDown (uint8_t ESPstate) {
   if (ESPstate > 1) iNETSerial.println("4,shutdown"); // send ESP shutdown command
-  uint8_t result = monitoriNET (1000);                // wait 1 sec
-  delay (200);                                        // ensure ESP in deep sleep
+  if (monitoriNET (1000) == 14) printDEBUG (F("[N] iNET normal Power-down."));
+  else printDEBUG (F("[N] iNET forced Power-down."));
+  delay (200);
   digitalWrite(ESP_ENpin, LOW);
   digitalWrite(MODEM_ENpin, LOW);
   LEDoff();                                           // turn-off LED
-  printDEBUG ("[N] iNET Power-down.");
-  printDEBUG ("[N] Attempt: "+String (iNetTx.iNETattempt)+", NoResp: "+String(iNetTx.iNETNoResp)+", failed: "+String(iNetTx.iNETSentfail)+" [Wifi: "+String(iNetTx.iNETWififail)+", Host: "+String (iNetTx.iNETHostfail)+"]");
-}
-
-uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for monitorPeriod sec
-  String iNETmsg = "", strCMD = "";
-  uint32_t starttime = millis();
-
-  while (((millis() - starttime) < monitorTime) || (iNETSerial.available())) {
-    while (iNETSerial.available()) {
-      char a = iNETSerial.read();
-      if (a == '\0') continue;
-      iNETSerialmsg += a;
-    }
-    while (iNETSerialmsg.indexOf("\r\n") >= 0) {
-      iNETmsg = iNETSerialmsg.substring (0, iNETSerialmsg.indexOf("\r\n"));
-      iNETSerialmsg.remove (0, iNETmsg.length() + 2);
-      if (iNETmsg.length() > 0) printDEBUG ("[R] " + iNETmsg);
-
-      if (iNETmsg.startsWith ("C,ESP init"))                return 11;
-      if (iNETmsg.startsWith ("C,wifi ready"))              return 12;
-      
-      if (iNETmsg.startsWith ("A,Disconnect OK"))           return 14;
-      if (iNETmsg.startsWith ("A,CMD RCV"))                 return 15;
-      if (iNETmsg.startsWith ("A,Sent OK-done")) {
-        if (iNETmsg.startsWith ("A,Sent OK-done,15")) {
-          iNetTx.iNETNoResp++;
-          sysVar.NodeStatus |= 0x40;                       // set No response bit
-        }
-        return 16;
-      }
-      if (iNETmsg.startsWith ("C,resolve ok"))              return 17;
-      if (iNETmsg.startsWith ("C,resolve error")) {         // resolve error, use default Host IP
-        iNetTx.iNETDNSfail++;
-        return 17;
-      }
-      
-      if (iNETmsg.startsWith ("B,")) {
-        if (iNETmsg.startsWith ("B,6,")) iNetTx.iNETDNSfail++;
-        return 21;
-      }
-      
-      if (iNETmsg.startsWith ("A,Sent OK-OTA,"))            return 31;
-      if (iNETmsg.startsWith ("C,OTA OK"))                  return 32;
-      if (iNETmsg.startsWith ("C,OTA err"))                 return 33;
-
-      if (iNETmsg.startsWith ("C,Enter wifi config mode"))  return 41;
-      if (iNETmsg.startsWith ("C,Config time-out"))         return 42;
-      if (iNETmsg.startsWith ("C,Config ok")) {
-        sysVar.ssid = getValue (iNETmsg, ',', 2);
-        sysVar.pass = getValue (iNETmsg, ',', 3);
-        return 43;
-      }
-      
-      if (iNETmsg.startsWith ("A,status,")) {
-        uint8_t result = (uint8_t)getValue (iNETmsg, ',', 2).toInt();
-        if (result == 0) return 11;                         // ESP inited
-        if (result == 2) return 12;                         // wifi connected
-      }
-    }
-  }
-  return 99;  // timeout
+  //printDEBUG ("[N] Attempt: "+String (iNetTx.iNETattempt)+", NoResp: "+String(iNetTx.iNETNoResp)+", failed: "+String(iNetTx.iNETSentfail)+" [Wifi: "+String(iNetTx.iNETWififail)+", Host: "+String (iNetTx.iNETHostfail)+"]");
 }
