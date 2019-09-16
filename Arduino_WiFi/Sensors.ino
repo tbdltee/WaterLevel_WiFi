@@ -1,8 +1,13 @@
 void Init_Peripheral() {
+#if (SENSOR_TYPE == 0)            // HC-SR04
   pinMode(SR04_TRIGpin, OUTPUT);
   digitalWrite(SR04_TRIGpin, LOW);
   pinMode(SR04_ECHOpin, INPUT);
-  
+#elif (SENSOR_TYPE == 1)          // 4-20mA Buttom-up Sensor ,e.g Sumersible water level sensor
+  pinMode (Level_EN_pin, OUTPUT);
+  digitalWrite(Level_EN_pin, LOW);
+#endif
+
   pinMode(BattMeasurepin, INPUT);
   BME280_Init(myBME280);
   if (myBME280.ready > 0) {
@@ -33,13 +38,13 @@ uint8_t getBatt(void) {
   if (sysVar.maxAmVolt < 4100) sysVar.maxAmVolt = 4100;                   // init maxAmVolt to 4.10v as 100%
   for (uint8_t i = 0; i < 64; i++) Avalue += analogRead(BattMeasurepin);
   AmVolt = map (Avalue, 0, 65472, 0, mVcc) * 2;                           // Calculate A2 volt. x2 due to R-divider
-  if (BattreCalcnt >= Batt_Interval) {                                    // re-calibration counter expire,
-    BattreCalcnt = 0;
+  if (SYScnt.BattreCal >= Batt_Interval) {                                // re-calibration counter expire,
+    SYScnt.BattreCal = 0;
     sysVar.maxAmVolt -= 50;                                               // reduce maxAmVolt 50mV
   }
   
   if (AmVolt > sysVar.maxAmVolt) sysVar.maxAmVolt = AmVolt;
-  // printDEBUG ("[B] Batt_cnt: "+ String(BattreCalcnt)+" ("+ String(Batt_Interval)+"), Vcc: "+ String(mVcc)+", A-mV: "+ String(AmVolt)+", Amax-mV: "+ String(sysVar.maxAmVolt));
+  // printDEBUG ("[B] Batt_cnt: "+ String(SYScnt.BattreCal)+" ("+ String(Batt_Interval)+"), Vcc: "+ String(mVcc)+", A-mV: "+ String(AmVolt)+", Amax-mV: "+ String(sysVar.maxAmVolt));
   if (AmVolt <= BATT_V000) {
     return 0;  
   } else {
@@ -68,7 +73,7 @@ uint16_t readADC11() {          // set ADC reference to Vcc and read ADC of inte
   return result;
 }
 
-void getAvgDistance (void) {
+void getAvgDistance (void) {        // average distace value in buffer to send to internet
   uint8_t i, countDistance1 = 0;
   uint16_t sumDistance = 0, sumErr = 0;
   
@@ -100,12 +105,13 @@ void getAvgDistance (void) {
 }
 
 void measureDistanceCM(void) {                                // main function to get distance from short range and long range sensor
-  TxData.lastCM = getDistanceSR04();                          // get distance from HC-SR04
+  TxData.lastCM = getDistanceSesnor();                        // get distance from Sensor
   TxData.distanceCM[TxData.distanceIdx % 5] = TxData.lastCM;  // keep only last 5 samples
   TxData.distanceIdx++;
 }
 
-uint16_t getDistanceSR04() {                          // Get distance (mm), single ping from HC-SR04+
+#if (SENSOR_TYPE == 0)            // HC-SR04
+uint16_t getDistanceSesnor() {                       // Get distance (mm), single ping from HC-SR04+
   uint16_t result = 0;
   uint32_t pulse_width;
   digitalWrite(SR04_TRIGpin, LOW);
@@ -119,6 +125,38 @@ uint16_t getDistanceSR04() {                          // Get distance (mm), sing
   if (inRange(result, 2, 400)) return result;         // valid distance is 3-400cm 
   return 0;
 }
+#elif (SENSOR_TYPE == 1)           // 4-20mA Sensor, 0..20mA: 0..1022
+uint16_t getDistanceSesnor() {                                      // Get ADC value for 4-20mA
+  digitalWrite(Level_EN_pin, HIGH);
+  delay (500);
+  uint16_t A11Value = readADC11();                                  // read ADC @1.1v reference
+  uint16_t Avalue = 0;
+  for (uint8_t i = 0; i < 8; i++) {
+    delay (10);
+    Avalue += analogRead(Level_pin);
+  }
+  delay (10);
+  digitalWrite(Level_EN_pin, LOW);
+  Avalue = Avalue/8;
+  Avalue = map (Avalue, 0, A11Value, 0, 1024/3);          // normalize Avalue@3.30v
+  if (Avalue < ADC4mA) {                                  // if Avalue < ADC4mA, increase counter/average value below ADC4mA
+    if (minADC4mAcnt == 0) minADC4mA = Avalue;
+    else minADC4mA = (minADC4mA + Avalue)/2;
+    minADC4mAcnt++;
+    if (minADC4mAcnt > 5) {                               // 5 consecutive minADC, update ADC4mA/backoff 2 counts
+      minADC4mAcnt -= 2;
+      ADC4mA       = minADC4mA;
+    }
+  } else {
+    minADC4mAcnt = 0;
+    minADC4mA    = ADC4mA;
+  }
+  Avalue = map (Avalue, 0, ADC4mA * 5, 0, 1020);          // map ADC 0..20mA -> 0..1020
+  printDEBUG ("[S] Sensor value:" + String(Avalue) + ", minADC4mA:" + String(minADC4mA) + ", minADC4mAcnt:" + String(minADC4mAcnt));
+  if (Avalue > 1020) Avalue = 1021;
+  return Avalue;
+}
+#endif
 
 // ======================================== BME80 Sensor ================================
 void BME280_Init(BME280 &BME280Sensor) {        // Init_BME280 in Force Mode
@@ -126,7 +164,7 @@ void BME280_Init(BME280 &BME280Sensor) {        // Init_BME280 in Force Mode
   BME280Sensor.runMode = 1;                     // 0=Sleep, 1,2=Force mode, 3=Normal Mode
   BME280Sensor.tStandby = 0;                    // tStandby[0-7] (Normal Mode Only): 0.5ms, 62.5ms, 125ms, 500ms 1000ms, 10ms, 20ms
   BME280Sensor.filter = 0;                      // Filter coefficients[0-4]: off, 2, 4, 8, 16
-  BME280Sensor.tempOverSample = 1;              // tempOverSample[0-5]: skipped, *1, *2, *4, *8, *16
+  BME280Sensor.tempOverSample  = 1;             // tempOverSample[0-5]:  skipped, *1, *2, *4, *8, *16
   BME280Sensor.pressOverSample = 1;             // pressOverSample[0-5]: skipped, *1, *2, *4, *8, *16
   BME280Sensor.humidOverSample = 1;             // humidOverSample[0-5]: skipped, *1, *2, *4, *8, *16
   BME280Sensor.begin();

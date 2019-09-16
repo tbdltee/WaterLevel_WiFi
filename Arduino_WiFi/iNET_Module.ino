@@ -8,15 +8,15 @@ void updateData (void) {
   getSensorData();
   TxData.distanceIdx = 0;
   if (iNETPowerUp() == false) {       // powerup error, increase system restart counter
-    iNetRstCnt++;
+    SYScnt.iNetRst++;
     printDEBUG (F("[N] => Power-up modem..ERROR"));
     return;
   }
   printDEBUG (F("[N] => Power-up modem..OK"));
-  iNetRstCnt = 0;                     // powerup ok, reset system restart counter
+  SYScnt.iNetRst = 0;              // powerup ok, reset system restart counter
   
-  // URL: deviceID,distance,batt,TempC/RH/hPaX100,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
-  sendURL = sysVar.DevID + "\r" + String(iNetTx.distanceCM) + "\r" + BYTE2HEX(iNetTx.BattLvl);
+  // URL: deviceID,distance/batt/TempC/RH/hPaX100,RainMMx10,NodeStatus/Attempt/DNSerr/NoResp/Senterr/WifiErr/Hosterr
+  sendURL = sysVar.DevID + "\r" + packLevel(iNetTx.distanceCM) + BYTE2HEX(iNetTx.BattLvl);
   if ((sysVar.NodeStatus&0x20) > 0) {          // BME280 presented
     sendURL += BYTE2HEX(iNetTx.TempC) + BYTE2HEX(iNetTx.RH) + uint16_t2HEX (iNetTx.hPAx100);
   } else {
@@ -71,7 +71,7 @@ void updateData (void) {
       }
     } else if (ESPstate == 2) {                   // sending data state
       printDEBUG ("[N] Sending data...");
-      iNETSerial.println ("7," + String((OTAallowCnt > OTA_ATTEMPT_ALLOW)?0:OTAallowCnt));
+      iNETSerial.println ("7," + String((SYScnt.OTAallow > OTA_ATTEMPT_ALLOW)?0:SYScnt.OTAallow));
       ESPstate = 3;
     } else if (ESPstate == 3) {                   // data sent, wait for DNS response
       if (result == 17) ESPstate = 4;
@@ -81,7 +81,7 @@ void updateData (void) {
       }
     } else if (ESPstate == 4) {                   // data sent, wait for esp response
       if ((result == 16)||(result == 18)||(result == 19)) {     // sent ok with no OTA or OTA rejected
-        if (OTAallowCnt > OTA_ATTEMPT_ALLOW) OTAallowCnt--;        // if OTAallow in grace period, decrease OTA counter
+        if (SYScnt.OTAallow > OTA_ATTEMPT_ALLOW) SYScnt.OTAallow--;        // if OTAallow in grace period, decrease OTA counter
         ESPstate = 11;                            // exit while {} with success
         resetTxData ();
         sysVar.NodeStatus &= 0x7F;                // clear node reboot flag
@@ -98,15 +98,15 @@ void updateData (void) {
         printDEBUG ("[N] Send Error");
       }
     } else if (ESPstate == 5) {                   // OTA in-progress
-      if ((result == 33) && (OTAallowCnt > 0)) {  // OTA failed
-        OTAallowCnt--;
+      if ((result == 33) && (SYScnt.OTAallow > 0)) {  // OTA failed
+        SYScnt.OTAallow--;
         ESPstate = 11;
-        if (OTAallowCnt == 0) {                   // too many OTA error, wait for i1 day to reset OTA allow counter
-          OTAallowCnt = iNET_ERR_RST;
+        if (SYScnt.OTAallow == 0) {               // too many OTA error, wait for i1 day to reset OTA allow counter
+          SYScnt.OTAallow = iNET_ERR_RST;
           printDEBUG ("[N] OTA error. Wait 1 day.");
         } else printDEBUG ("[N] OTA error.");
       } else if ((result == 11) || (result == 32)) {    // OTA success
-        OTAallowCnt = OTA_ATTEMPT_ALLOW;
+        SYScnt.OTAallow = OTA_ATTEMPT_ALLOW;
         ESPstate = 13;
         printDEBUG ("[N] OTA done.");
       }
@@ -232,4 +232,11 @@ void iNETPowerDown (uint8_t ESPstate) {
   digitalWrite(MODEM_ENpin, LOW);
   LEDoff();                                           // turn-off LED
   //printDEBUG ("[N] Attempt: "+String (iNetTx.iNETattempt)+", NoResp: "+String(iNetTx.iNETNoResp)+", failed: "+String(iNetTx.iNETSentfail)+" [Wifi: "+String(iNetTx.iNETWififail)+", Host: "+String (iNetTx.iNETHostfail)+"]");
+}
+
+String packLevel (uint16_t distanceCM) {  // 0xaadd dddd dddd:distancetype 0..3,  distance:03FF (0..1023)
+  uint16_t result = distanceCM & 0x3FF;
+  result |= (SENSOR_TYPE << 10); 
+  String txt = "000" + String (result, HEX);
+  return txt.substring(txt.length() - 3);
 }

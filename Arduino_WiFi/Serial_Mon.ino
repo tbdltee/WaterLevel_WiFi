@@ -11,7 +11,7 @@ uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for 
     while (iNETSerialmsg.indexOf("\r\n") >= 0) {
       iNETmsg = iNETSerialmsg.substring (0, iNETSerialmsg.indexOf("\r\n"));
       iNETSerialmsg.remove (0, iNETmsg.length() + 2);
-      if (iNETmsg.length() > 0) printDEBUG ("[R] " + iNETmsg);
+      //if (iNETmsg.length() > 0) printDEBUG ("[R] " + iNETmsg);
 
       if (iNETmsg.startsWith ("C,ESP init"))                return 11;
       if (iNETmsg.startsWith ("C,wifi ready"))              return 12;
@@ -65,6 +65,6 @@ uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for 
       }
     }
   }
-  if ((iNETSerialmsg.indexOf("\n") == 0) && iNETSerialmsg.length() > 0) iNETSerialmsg = "";
+  if ((iNETSerialmsg.indexOf("\n") == 0) && iNETSerialmsg.length() > 40) iNETSerialmsg = "";
   return 99;  // timeout
 }

@@ -8,6 +8,9 @@ This project is using HC-SR04p ultrasonic to measure the water level and send to
 * IOT001D0003 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
 
 ## Release History
+* 0040F
+  * BME280 auto reset if cannot read data for consecutive 5 times
+  * Support Submersible 4-20mA Water Level Sensor
 * 0040E
   * Support remote reboot device from Dashboard
 * 0040D

@@ -12,10 +12,21 @@ uint8_t TxiNET_Normal   = 6;            // Max:250, Send data to internet every 
 // Sensor pin: |GND|Rain| |SR04_TRIG|SR04_ECHO|GND|A1|5V|3V3|
 // pin assignment
 const uint8_t RainGauge_pin   = 2;
-const uint8_t SR04_TRIGpin    = 3;
-const uint8_t SR04_ECHOpin    = 4;
 const uint8_t BattMeasurepin  = A2;
 const uint8_t Profile_SEL_Pin = 6;            // Profile Select: 0-WiFi, 1-3G
+
+#if (SENSOR_TYPE == 0)                        // HC-SR04
+  const uint8_t SR04_TRIGpin  = 3;
+  const uint8_t SR04_ECHOpin  = 4;
+  const uint16_t LvlCMChange  = 10;           // Update data asap if levelCM change > 10 cm/min
+#elif (SENSOR_TYPE == 1)                      // 4-20mA Buttom-up Sensor ,e.g Sumersible water level sensor
+  const uint8_t  Level_pin    = A1;
+  const uint8_t  Level_EN_pin = 11;
+  const uint16_t LvlCMChange  = 20;           // Update data asap if levelCM change > 10 cm/min --> ADC=20
+  uint16_t       ADC4mA       = 159;          // Normalize ADC value 4mA @3.3v. Run ADC_Cal.ino sketch to get value
+  uint8_t        minADC4mAcnt = 0;            // consecutive counter of ADC below ADC4mA
+  uint16_t       minADC4mA    = ADC4mA;       // min value of ADC 4mA
+#endif
 
 const uint8_t ESP_RxPin       = 7;            // to ESP Tx
 const uint8_t ESP_TxPin       = 8;            // to ESP Rx
@@ -27,9 +38,17 @@ const uint8_t  OTA_ATTEMPT_ALLOW  = 5;        // ESP8266 http OTA: 0-OTA not all
 const uint8_t  BATTPowerSave      = 30;       // %Batt to operate in power save mode
 const uint8_t  BATTPowerOff       = 10;       // %Batt to operate in power off
 const uint16_t BATT_V000          = 3600;     // Batt mVolt as 0%Batt, 3.40v = Vcc 3.15v + 0.25v drop voltage
-const uint16_t LvlCMChange        = 10;       // Update data asap if levelCM change > 10 cm/min
+const uint8_t  BME280err_ALLOW    = 5;        // Consectutive BME280 read error before BME280 reset
 
 // ============================= Variable =============================
+struct counter {
+  uint8_t  OTAallow     = OTA_ATTEMPT_ALLOW;  // #OTA update failure before stop OTA. reset when data sent with no OTA req.
+  uint8_t  nonRapid     = 0;                  // Counter of consecutive non-rapid count to reset Rapidcnt counter
+  uint8_t  BME280err    = 0;                  // consecutive error reading BME280
+  uint16_t BattreCal    = 0;                  // batt re-calibrate counter
+  uint16_t iNetRst      = 0;                  // Consecutive wifi error counter before node restart
+} SYScnt;
+
 struct sysParaType {                          // system parameters
   String   DevID          = String(Device_GroupID) + String(Device_ID);
   String   ssid           = "";

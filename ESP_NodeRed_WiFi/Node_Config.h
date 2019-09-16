@@ -1,14 +1,13 @@
 // =================== Declaration ======================
-const String  FW_version = "0040E";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
+const String  FW_version = "0040F";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
 
 const char* ServerHost  = "myiotdata.duckdns.org";
 const int dataPort      = 10722;
-const int udpEchoPort   = 10721;
 const char* fotaUrlBase = "myiotfota.duckdns.org";
 const int fotaPort      = 10720;
 
 /* =================== READ ME =======================
-IDE Config: Board-Generic ESP8266 Module, Flash Mode-QIO, Flash Size:-1M (no SPIFFS).
+IDE Config: Board-Generic ESP8266 Module, Flash Mode-DIO, Flash Size:-1M (no SPIFFS).
 ESP Response Code:
       0   - ESP inited and wait for ssid/pass
       1   - ssid/pass received. Connecting wifi with 3G
@@ -32,8 +31,11 @@ ESP Response Code:
         7 - B,7,Sent UDP fail
         9 - B,9,Unknown CMD
       C   - Debug message
-    
-MongoDB server URL: myiotdata.duckdns.org:8080
+
+WiFI Auto Config:
+  Connect to WiF error --> Search for ssid : x0[ssid]:[pass]x0, e.g. x0IOTWL3:021015539x0 --> WiFi config Portal
+  
+data server URL:    myiotdata.duckdns.org:8080
 firmware URL:       myiotdata.duckdns.org:8080/.fota/ESP8xxxxx.bin
 data format:        xxxxy,FWver,arduino Data        y:5-TCP, 6/7:UDP#retry
 response:           1,newKey,[FOTA],0

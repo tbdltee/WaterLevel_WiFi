@@ -84,9 +84,9 @@ String sentTCPdata (void) {                                 // return sever resp
 
 String sentUDPdata (uint8_t RetryNr) {
   WiFiUDP udpClient;
-  char incomingUDP[255];                                          // buffer for incoming UDP packets
+  char incomingUDP[255];                                    // buffer for incoming UDP packets
   
-  udpClient.begin(udpEchoPort);
+  udpClient.begin(dataPort);
   Serial.print ("C,Sending UDP data-" + String(RetryNr) + "..");
   
   String udpData = SEQNr + String(RetryNr+5) + "," + FW_version + "," + sendTxt;

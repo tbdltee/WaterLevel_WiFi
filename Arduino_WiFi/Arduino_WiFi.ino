@@ -1,10 +1,11 @@
 #define stDEBUG             0               // Show Debug message. 0-no debug, 1-show debug, 3-debug using wifi profile
-#define SENSOR_RAIN         1               // Rain Gauge Sensor: 0-not present, 1-present
+#define SENSOR_TYPE         1               // Distance Sensor:    0-Top-Down distanceCM (HC-R04), 1-Buttom-up 4-20mA, 2-reserved, 3-reserved
+#define SENSOR_RAIN         1               // Rain Gauge Sensor:  0-not present, 1-present
 
 // ================================= Node Info. ===========================================
 // SW version 0040D 
 const char* Device_GroupID  = "IOT-0001";   // Device_GroupID
-const char* Device_ID       = "D001";       // Device ID
+const char* Device_ID       = "D003";       // Device ID
 
 // =================================== Library Declaration ================================
 #include "Node_Config.h"
@@ -30,12 +31,8 @@ volatile uint8_t  INT0_btnCnt = 0;            // INT0 Debounce Counter 10x15 = 1
 volatile uint16_t cntRemaining;               // how many times remain before wakeup and tx value, Volatile variable, to be able to modify in interrupt function
 volatile uint16_t RainCount   = 0;            // rain sensor counter
 
-uint8_t OTAallowCnt   = OTA_ATTEMPT_ALLOW;    // #OTA update failure before stop OTA. reset when data sent with no OTA req.
 uint8_t TxiNETcnt     = 0;                    // Counter to send data to internet. 0-Send data, 1..250-Normal/Low Batt, 251..254-Pwr-Off recovery, 255-never send, 
 uint8_t Rapidcnt      = 128;                  // Counter of rapid update
-uint8_t nonRapidcnt   = 0;                    // Counter of consecutive non-rapid count to reset Rapidcnt counter
-uint16_t BattreCalcnt = 0;                    // batt re-calibrate counter
-uint16_t iNetRstCnt   = 0;                    // Consecutive wifi error counter before node restart
 uint32_t wakeup_time  = 0;
 String iNETSerialmsg  = "";
 
@@ -105,7 +102,7 @@ void loop(void) {
       TxiNETcnt = TxiNET_Normal;
     }
   }
-  if (iNetRstCnt > iNET_ERR_RST) {
+  if (SYScnt.iNetRst > iNET_ERR_RST) {
     printDEBUG ("[S] No iNET 24hr...Restart");
     delay (500);
     resetFunc();
@@ -119,13 +116,13 @@ void checkLevelRapidChange (uint16_t PrevdistanceCM) {
   uint16_t lowerRapid =  (PrevdistanceCM > LvlRapidCM) ? PrevdistanceCM - LvlRapidCM: 0;
   if (TxData.lastCM  > 0) {
     if (TxData.lastCM > (PrevdistanceCM + LvlRapidCM)) {              // distance above threshold -> Rapid change increase counter
-      Rapidcnt++; nonRapidcnt = 0;
+      Rapidcnt++; SYScnt.nonRapid = 0;
     } else if (TxData.lastCM < lowerRapid) {                          // distance below threshold -> Rapid change decrease counter
-      Rapidcnt--; nonRapidcnt = 0;
+      Rapidcnt--; SYScnt.nonRapid = 0;
     } else {                                                          // distance within threshold range -> increase non-rapid counter
-      nonRapidcnt++;
-      if (nonRapidcnt > 10) {                                         // if distance in range > 10, reset rapid change counter
-        Rapidcnt = 128; nonRapidcnt = 0;
+      SYScnt.nonRapid++;
+      if (SYScnt.nonRapid > 10) {                                     // if non-rapid counter > 10, reset rapid change counter
+        Rapidcnt = 128; SYScnt.nonRapid = 0;
       }
     }
     if (outRange (Rapidcnt, 125, 131)) {                              // if 3 consecutive rapid change, update inet/override BATTPowerOff
@@ -136,9 +133,9 @@ void checkLevelRapidChange (uint16_t PrevdistanceCM) {
 }
 
 void updateBattState (void) {
-  BattreCalcnt++;
+  SYScnt.BattreCal++;
   iNetTx.BattLvl = getBatt();                                       // get %battery
-  printDEBUG ("[Batt] max-mV:" + String(sysVar.maxAmVolt) + ", BattCnt:"+ String(BattreCalcnt) + " ,TxiNETcnt:"+ String(TxiNETcnt));
+  printDEBUG ("[Batt] max-mV:" + String(sysVar.maxAmVolt) + ", BattCnt:"+ String(SYScnt.BattreCal) + " ,TxiNETcnt:"+ String(TxiNETcnt));
   LEDflash ();
   if (iNetTx.BattLvl <= BATTPowerOff) {                             // if Batt_PowerOff, set TxiNETcnt = 254 (never update iNET)
     TxiNETcnt = 255;
@@ -205,6 +202,13 @@ void getSensorData (void) {       // calculate average distance and get weather 
   iNetTx.TempC    = (uint8_t)((TempC == 127)?127:(TempC+40));
   iNetTx.RH       = (uint8_t)RH;
   iNetTx.hPAx100  = (uint16_t)(outRange(Pa, 50000, 115500)?0xFFFF:(Pa-50000.0));
+  if ((TempC == 127)||(RH == 127)||(Pa == 0)) SYScnt.BME280err++;
+  else SYScnt.BME280err = 0;
+  if (SYScnt.BME280err > BME280err_ALLOW) {
+    myBME280.reset();
+    BME280_Init (myBME280);
+    SYScnt.BME280err = BME280err_ALLOW - 1;
+  }
 }
 
 String getValue(String data, char separator, int index) {
