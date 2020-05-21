@@ -191,7 +191,8 @@ void sendConfigPage (void) {
   server.send(200, "text/html", "");
   server.sendContent_P(ConfigPage1);         // sent content directly from PROGMEM
   server.sendContent(ssidList);
-  server.sendContent_P(ConfigPage2);         // sent content directly from PROGMEM  
+  server.sendContent_P(ConfigPage2);         // sent content directly from PROGMEM
+  WiFi.scanDelete();
 }
 
 String rssiText (int32_t rssi) {

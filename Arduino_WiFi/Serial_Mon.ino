@@ -11,7 +11,7 @@ uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for 
     while (iNETSerialmsg.indexOf("\r\n") >= 0) {
       iNETmsg = iNETSerialmsg.substring (0, iNETSerialmsg.indexOf("\r\n"));
       iNETSerialmsg.remove (0, iNETmsg.length() + 2);
-      //if (iNETmsg.length() > 0) printDEBUG ("[R] " + iNETmsg);
+      if (iNETmsg.length() > 0) printDEBUG ("[R] " + iNETmsg);
 
       if (iNETmsg.startsWith ("C,ESP init"))                return 11;
       if (iNETmsg.startsWith ("C,wifi ready"))              return 12;
@@ -23,7 +23,11 @@ uint8_t monitoriNET (uint32_t monitorTime) {         // monitor iNET Serial for 
       
       if (iNETmsg.startsWith ("A,Sent OK-done")) {
         if (iNETmsg.startsWith ("A,Sent OK-done,OTA "))     return 18;  // send OK but OTA error
-        if (iNETmsg.startsWith ("A,Sent OK-done,restart,")) return 19;  // send OK and restart node
+        else if (iNETmsg.startsWith ("A,Sent OK-done,resetADC4mA,")) {  // send OK and restart node
+#if (SENSOR_TYPE == 1)
+          ADC4mA = ADC4mAINIT;
+#endif
+        } else if (iNETmsg.startsWith ("A,Sent OK-done,restart,")) return 19;  // send OK and reset ADC4mA
         else if (iNETmsg.startsWith ("A,Sent OK-done,15")) {
           iNetTx.iNETNoResp++;
           sysVar.NodeStatus |= 0x04;                                    // set No response bit (bit was cleared when enter updateData();)

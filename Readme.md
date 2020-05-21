@@ -3,12 +3,15 @@ This project is using HC-SR04p ultrasonic to measure the water level and send to
 
 ## Firmware Upload Status (Arduino/ESP8266)
 
-* IOT001D0001 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
+* IOT001D0001 - 00410/00410/SDK2.2.1-Boot1.7/Core 2.6.3
 * IOT001D0002 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
-* IOT001D0003 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.4.2
+* IOT001D0003 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.6.3
 
 ## Release History
 * 0040F
+  * improve TCP response handling speed.
+  * change iot server from tbdltee.duckddns.org:10722 to tbdltee.thddns.net:8895
+  * change OTA server from tbdltee.duckddns.org:8890 to tbdltee.thddns.net:8890
   * BME280 auto reset if cannot read data for consecutive 5 times
   * Support Submersible 4-20mA Water Level Sensor
 * 0040E

@@ -41,9 +41,10 @@ void sendData2iNet (void) {
     } else {
       CMD.replace ("A,Sent OK,","A,Sent OK-done,OTA key mismatch,");
     }
-  }
-  if ((CMD.startsWith ("A,Sent OK,2,")) && (rcvKeyOK=="OK")) {    // required node restart
+  } else if ((CMD.startsWith ("A,Sent OK,2,")) && (rcvKeyOK=="OK")) {    // required node restart
     CMD.replace ("A,Sent OK,","A,Sent OK-done,restart,");
+  } else if ((CMD.startsWith ("A,Sent OK,3,")) && (rcvKeyOK=="OK")) {    // re-init ADC4mA
+    CMD.replace ("A,Sent OK,","A,Sent OK-done,resetADC4mA,");
   }
   CMD.replace ("A,Sent OK,","A,Sent OK-done,");
   Serial.println (CMD);
@@ -67,10 +68,11 @@ String sentTCPdata (void) {                                 // return sever resp
   uint32_t prevtime = millis();
   while ((millis() - prevtime) < 15000) {                  // wait for TCP packet received for 15 sec
     if (tcpClient.available()) {
-      char a = tcpClient.read();
-      if (a =='\0') continue;
+      char a = (char)tcpClient.read();
       if (a =='\n') break;
+      if (a =='\0') continue;
       result += a;
+      delay(10);                                             // delay will make esp to be able to detect \n
     }
   }
   tcpClient.stop();
@@ -83,10 +85,8 @@ String sentTCPdata (void) {                                 // return sever resp
 }
 
 String sentUDPdata (uint8_t RetryNr) {
-  WiFiUDP udpClient;
   char incomingUDP[255];                                    // buffer for incoming UDP packets
   
-  udpClient.begin(dataPort);
   Serial.print ("C,Sending UDP data-" + String(RetryNr) + "..");
   
   String udpData = SEQNr + String(RetryNr+5) + "," + FW_version + "," + sendTxt;
@@ -175,22 +175,27 @@ void fwUpgrade (String newFW_version) {
   if (!WiFi.hostByName(fotaUrlBase, otaHost_addr)) {          // Resolving host name failed
     if (Host_addr == IPAddress(255,255,255,255)) {            // also no default host address
       Serial.println ("C,OTA err resolve hostname,skipped.");
+      printDebug ("OTA,OTA error,"+ FW_version +"," + newFW_version + ",resolve DNS");
       return;
     } else {
       Serial.println ("C,cannot resolve OTA hostname. Use " + Host_addr.toString() + "\r\n");
       otaHost_addr = Host_addr;                               // Update Host IP with new IP address
     }
   }
-  t_httpUpdate_return ret = ESPhttpUpdate.update(otaHost_addr.toString(), fotaPort, "/.fota/ESP" + newFW_version + ".bin", devID);
+  printDebug ("OTA,OTA begin," + FW_version +"," + newFW_version + ",started");
+  t_httpUpdate_return ret = ESPhttpUpdate.update(otaHost_addr.toString(), fotaPort, "/.api/.fota/ESP" + newFW_version + ".bin", devID);
   switch(ret) {
     case HTTP_UPDATE_FAILED:
       Serial.println("C,OTA err," + ESPhttpUpdate.getLastErrorString());
+      printDebug ("OTA,OTA error,"+ FW_version +"," + newFW_version + "," + ESPhttpUpdate.getLastErrorString());
       break;
     case HTTP_UPDATE_NO_UPDATES:
       Serial.println("C,OTA err,skipped.");
+      printDebug ("OTA,OTA error,"+ FW_version +"," + newFW_version + ",no update");
       break;
     case HTTP_UPDATE_OK:
       Serial.println("C,OTA OK.");            // may not called we reboot the ESP
+      printDebug ("OTA,OTA success,"+ FW_version +"," + newFW_version + ",restart");
       delay (500);
       WiFi.disconnect ();
       delay (1);
@@ -200,4 +205,11 @@ void fwUpgrade (String newFW_version) {
       ESP.restart();
       break;
   }
+}
+
+void printDebug (String txt) {
+  txt = "debug,"+devID + ","+ txt;
+  udpClient.beginPacket(ServerHost, dataPort);
+  udpClient.write(txt.c_str());
+  udpClient.endPacket();
 }

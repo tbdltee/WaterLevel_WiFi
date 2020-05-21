@@ -17,6 +17,7 @@ char pass[32] = "test";
 
 ESP8266WebServer server(80);              // local web server for configuration portal
 IPAddress Host_addr(255,255,255,255);
+WiFiUDP udpClient;
 
 // ======================== Program Setup Part ===========================
 void setup() {
@@ -51,6 +52,7 @@ void setup() {
   
   if (ESPstatus == 2) {                                     // wifi connected
     Serial.println ("C,wifi ready,IP:" + WiFi.localIP().toString());
+    udpClient.begin(dataPort);
   } else if (ESPstatus == 7) {                              // wifi.begin failed and in wifi config mode
     Serial.println ("C,Enter wifi config mode");
     ESPstatus = 5;

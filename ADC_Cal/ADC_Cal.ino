@@ -83,15 +83,15 @@ uint16_t getADC4mAfactor() {
 
 
 uint16_t getDistanceSesnor() {                                      // Get ADC value for 4-20mA
-  uint16_t A11Value = readADC11();                                  // read ADC @1.1v reference
-  uint16_t Avalue = 0;
+  uint16_t A11Value = 0, Avalue = 0;
   uint16_t mVcc = (uint16_t)(1125300UL/(uint32_t)A11Value);                // calculate Vcc
   Serial.print ("A11Value: " + String(A11Value) + ", mVcc: "+ String(mVcc));
   for (uint8_t i = 0; i < 8; i++) {
-    delay (10);
-    Avalue += analogRead(Level_pin);
+    A11Value += readADC11 (); delay (10);
+    Avalue += analogRead(Level_pin); delay (10);
   }
   Avalue = Avalue/8;
+  A11Value = A11Value/8;
   Serial.print (", Avalue: "+ String(Avalue));
   Avalue = map (Avalue, 0, A11Value, 0, 1024/3);          // normalize Avalue@3.30v
   Serial.print (", Avalue@3.3v: "+ String(Avalue) + ", ADC4mA@3.3v: "+ String(ADC4mA) + ", ADC20mA@3.3v: "+ String(ADC4mA*5));

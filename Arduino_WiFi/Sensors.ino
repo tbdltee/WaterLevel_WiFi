@@ -110,7 +110,7 @@ void measureDistanceCM(void) {                                // main function t
   TxData.distanceIdx++;
 }
 
-#if (SENSOR_TYPE == 0)            // HC-SR04
+#if (SENSOR_TYPE == 0)                                // HC-SR04
 uint16_t getDistanceSesnor() {                       // Get distance (mm), single ping from HC-SR04+
   uint16_t result = 0;
   uint32_t pulse_width;
@@ -125,34 +125,36 @@ uint16_t getDistanceSesnor() {                       // Get distance (mm), singl
   if (inRange(result, 2, 400)) return result;         // valid distance is 3-400cm 
   return 0;
 }
-#elif (SENSOR_TYPE == 1)           // 4-20mA Sensor, 0..20mA: 0..1022
-uint16_t getDistanceSesnor() {                                      // Get ADC value for 4-20mA
+#elif (SENSOR_TYPE == 1)                              // 4-20mA Sensor, 0..20mA: 0..1022
+uint16_t getDistanceSesnor() {                        // Get ADC value for 4-20mA
   digitalWrite(Level_EN_pin, HIGH);
   delay (500);
-  uint16_t A11Value = readADC11();                                  // read ADC @1.1v reference
-  uint16_t Avalue = 0;
+  uint16_t A11Value = 0, Avalue = 0;
   for (uint8_t i = 0; i < 8; i++) {
-    delay (10);
-    Avalue += analogRead(Level_pin);
+    A11Value += readADC11(); delay (10);
+    Avalue   += analogRead(Level_pin); delay (10);
   }
   delay (10);
   digitalWrite(Level_EN_pin, LOW);
-  Avalue = Avalue/8;
-  Avalue = map (Avalue, 0, A11Value, 0, 1024/3);          // normalize Avalue@3.30v
-  if (Avalue < ADC4mA) {                                  // if Avalue < ADC4mA, increase counter/average value below ADC4mA
-    if (minADC4mAcnt == 0) minADC4mA = Avalue;
-    else minADC4mA = (minADC4mA + Avalue)/2;
-    minADC4mAcnt++;
-    if (minADC4mAcnt > 5) {                               // 5 consecutive minADC, update ADC4mA/backoff 2 counts
-      minADC4mAcnt -= 2;
-      ADC4mA       = minADC4mA;
+  printDEBUG ("[S] Avalue x 8:" + String(Avalue) + ", A11Value x 8:" + String(A11Value));
+  Avalue   = Avalue/8;
+  A11Value = A11Value/8;
+  Avalue = Avalue * 341/A11Value;                     // Avalue = map (Avalue, 0, A11Value, 0, 1024/3);  // normalize Avalue@3.30v
+  printDEBUG ("[S] Avalue@3.3v:" + String(Avalue) + ", ADC4mA:" + String(ADC4mA));
+  if ((Avalue < ADC4mA)) {                            // if Avalue < ADC4mA, increase counter/average value below ADC4mA
+    if (Avalue > 180) {                               // if ADC too low, skip average & counter
+      minADC4mAcnt++;
+      if (minADC4mAcnt > 5) {                         // 5 consecutive minADC, update ADC4mA/backoff 3 counts
+        minADC4mAcnt -= 3;
+        ADC4mA       = (ADC4mA + Avalue)/2;
+        EEPROM.put (0x00, ADC4mA);
+      }
     }
   } else {
     minADC4mAcnt = 0;
-    minADC4mA    = ADC4mA;
   }
-  Avalue = map (Avalue, 0, ADC4mA * 5, 0, 1020);          // map ADC 0..20mA -> 0..1020
-  printDEBUG ("[S] Sensor value:" + String(Avalue) + ", minADC4mA:" + String(minADC4mA) + ", minADC4mAcnt:" + String(minADC4mAcnt));
+  Avalue = Avalue * 204/ADC4mA;                       // Avalue = map (Avalue, 0, ADC4mA * 5, 0, 1020); // map ADC 0..20mA -> 0..1020
+  printDEBUG ("[S] Avalue:" + String(Avalue) + ", minADC4mAcnt:" + String(minADC4mAcnt));
   if (Avalue > 1020) Avalue = 1021;
   return Avalue;
 }

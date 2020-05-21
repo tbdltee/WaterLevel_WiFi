@@ -20,12 +20,12 @@ const uint8_t Profile_SEL_Pin = 6;            // Profile Select: 0-WiFi, 1-3G
   const uint8_t SR04_ECHOpin  = 4;
   const uint16_t LvlCMChange  = 10;           // Update data asap if levelCM change > 10 cm/min
 #elif (SENSOR_TYPE == 1)                      // 4-20mA Buttom-up Sensor ,e.g Sumersible water level sensor
+  #define ADC4mAINIT            192
   const uint8_t  Level_pin    = A1;
   const uint8_t  Level_EN_pin = 11;
   const uint16_t LvlCMChange  = 20;           // Update data asap if levelCM change > 10 cm/min --> ADC=20
-  uint16_t       ADC4mA       = 159;          // Normalize ADC value 4mA @3.3v. Run ADC_Cal.ino sketch to get value
+  uint16_t       ADC4mA       = ADC4mAINIT;   // Normalize ADC value 4mA @3.3v. Run ADC_Cal.ino sketch to get value
   uint8_t        minADC4mAcnt = 0;            // consecutive counter of ADC below ADC4mA
-  uint16_t       minADC4mA    = ADC4mA;       // min value of ADC 4mA
 #endif
 
 const uint8_t ESP_RxPin       = 7;            // to ESP Tx

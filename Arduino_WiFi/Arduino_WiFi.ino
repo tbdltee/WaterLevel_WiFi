@@ -1,11 +1,11 @@
-#define stDEBUG             0               // Show Debug message. 0-no debug, 1-show debug, 3-debug using wifi profile
-#define SENSOR_TYPE         1               // Distance Sensor:    0-Top-Down distanceCM (HC-R04), 1-Buttom-up 4-20mA, 2-reserved, 3-reserved
+#define stDEBUG             1               // Show Debug message. 0-no debug, 1-show debug, 2-debug using wifi profile
+#define SENSOR_TYPE         0               // Distance Sensor:    0-Top-Down distanceCM (HC-R04), 1-Buttom-up 4-20mA, 2-reserved, 3-reserved
 #define SENSOR_RAIN         1               // Rain Gauge Sensor:  0-not present, 1-present
 
 // ================================= Node Info. ===========================================
 // SW version 0040D 
 const char* Device_GroupID  = "IOT-0001";   // Device_GroupID
-const char* Device_ID       = "D003";       // Device ID
+const char* Device_ID       = "D001";       // Device ID
 
 // =================================== Library Declaration ================================
 #include "Node_Config.h"
@@ -14,6 +14,7 @@ const char* Device_ID       = "D003";       // Device ID
 #include <avr/sleep.h>        // library for sleep
 #include <avr/power.h>        // library for power control
 #include <NeoSWSerial.h>
+#include <EEPROM.h>
 #include <I2C.h>
 #include <BME280_I2C.h>
 
@@ -83,6 +84,9 @@ void setup() {
   resetTxData ();
   sysVar.ssid = sysVar.DevID + "-" + String (Device_Profile);
   sysVar.pass = sysVar.ssid;
+#if (SENSOR_TYPE == 1)
+  EEPROM.get (0x00, ADC4mA);
+#endif
 }
 
 void loop(void) {
@@ -92,7 +96,7 @@ void loop(void) {
   uint16_t PrevdistanceCM = TxData.lastCM;                            // save current distance value before new distance measurement
   measureDistanceCM ();                                               // single measure distance, every wake-up (3 min)
   checkLevelRapidChange (PrevdistanceCM);
-  printDEBUG ("[D] rangeCM-"+String(TxData.distanceIdx)+":"+String(TxData.lastCM) + ", Batt:"+String(iNetTx.BattLvl)+", RainCnt:"+String(RainCount)+", Rapidcnt:"+String(Rapidcnt));
+  //printDEBUG ("[D] rangeCM-"+String(TxData.distanceIdx)+":"+String(TxData.lastCM) + ", Batt:"+String(iNetTx.BattLvl)+", RainCnt:"+String(RainCount)+", Rapidcnt:"+String(Rapidcnt));
   
   if (TxiNETcnt == 0) {                                 // Send data to internet
     updateData ();
@@ -103,7 +107,7 @@ void loop(void) {
     }
   }
   if (SYScnt.iNetRst > iNET_ERR_RST) {
-    printDEBUG ("[S] No iNET 24hr...Restart");
+    //printDEBUG ("[S] No iNET 24hr...Restart");
     delay (500);
     resetFunc();
   }
@@ -135,19 +139,19 @@ void checkLevelRapidChange (uint16_t PrevdistanceCM) {
 void updateBattState (void) {
   SYScnt.BattreCal++;
   iNetTx.BattLvl = getBatt();                                       // get %battery
-  printDEBUG ("[Batt] max-mV:" + String(sysVar.maxAmVolt) + ", BattCnt:"+ String(SYScnt.BattreCal) + " ,TxiNETcnt:"+ String(TxiNETcnt));
+  //printDEBUG ("[Batt] max-mV:" + String(sysVar.maxAmVolt) + ", BattCnt:"+ String(SYScnt.BattreCal) + " ,TxiNETcnt:"+ String(TxiNETcnt));
   LEDflash ();
   if (iNetTx.BattLvl <= BATTPowerOff) {                             // if Batt_PowerOff, set TxiNETcnt = 254 (never update iNET)
     TxiNETcnt = 255;
-    printDEBUG ("[D] Batt Power-Off..");
+    //printDEBUG ("[D] Batt Power-Off..");
    return;
   }
   if (TxiNETcnt > 250) {                                            // if Batt in Power_off state, check wakeup condition?
     if (iNetTx.BattLvl > BATTPowerSave) {                           // if Batt Level above Power_Save, decrease counter
-      printDEBUG ("[D] Batt Recovery.." + String (TxiNETcnt - 251));
+      //printDEBUG ("[D] Batt Recovery.." + String (TxiNETcnt - 251));
     } else {                                                        // Tx in Power-Save with below Power_Save threshold -> hold in receovery state
       TxiNETcnt = 254;
-      printDEBUG ("[D] Batt Reovery-hold..");
+      //printDEBUG ("[D] Batt Reovery-hold..");
     }
     if (TxiNETcnt == 251) {                                         // Batt above Power_Save for 4 consecutive WakeupInterval, send data to iNET
       if (iNetTx.BattLvl <= BATTPowerSave) sysVar.NodeStatus |= 0x10;
@@ -161,7 +165,7 @@ void updateBattState (void) {
     if ((sysVar.NodeStatus & 0x10) == 0) {                          // Normal ==> Power Save
       sysVar.NodeStatus |= 0x10;                                    // Low Batt
       if (TxiNETcnt > 0) TxiNETcnt += (TxiNET_LowBatt - TxiNET_Normal);
-      printDEBUG ("[D] Batt Norm -> PwrSave...new TxiNETcnt:" + String (TxiNETcnt));
+      //printDEBUG ("[D] Batt Norm -> PwrSave...new TxiNETcnt:" + String (TxiNETcnt));
     }
   } else {                                                          // Normal state
     if (sysVar.NodeStatus & 0x10) {                                 // Power Save ==> Normal
@@ -169,7 +173,7 @@ void updateBattState (void) {
       TxiNETcnt = TxiNET_LowBatt - TxiNETcnt;
       if (TxiNETcnt >= TxiNET_Normal) TxiNETcnt = 0;
       else TxiNETcnt = TxiNET_Normal - TxiNETcnt;
-      printDEBUG ("[D] Batt PwrSave -> Norm...new TxiNETcnt:" + String (TxiNETcnt));
+      //printDEBUG ("[D] Batt PwrSave -> Norm...new TxiNETcnt:" + String (TxiNETcnt));
     }
   }
 }
@@ -190,6 +194,9 @@ void resetTxData (void) {
 }
 
 void getSensorData (void) {       // calculate average distance and get weather data
+  
+  return;
+  
   getAvgDistance ();              // iNetTx.distanceCM and iNetTx.errType were updated
   float TempC = 127, RH = 127, Pa = 0;
   readBME280 (myBME280, TempC, Pa, RH);

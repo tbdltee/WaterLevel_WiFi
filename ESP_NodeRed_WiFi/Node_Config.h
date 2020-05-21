@@ -1,10 +1,10 @@
 // =================== Declaration ======================
 const String  FW_version = "0040F";       // xyyzz: x-chipID (0-ESP8266,1-ESP8285), yy-major version, zz-minor version
 
-const char* ServerHost  = "myiotdata.duckdns.org";
-const int dataPort      = 10722;
-const char* fotaUrlBase = "myiotfota.duckdns.org";
-const int fotaPort      = 10720;
+const char* ServerHost  = "tbdltee.thddns.net";
+const int dataPort      = 8895;
+const char* fotaUrlBase = "tbdltee.thddns.net";
+const int fotaPort      = 8890;
 
 /* =================== READ ME =======================
 IDE Config: Board-Generic ESP8266 Module, Flash Mode-DIO, Flash Size:-1M (no SPIFFS).
@@ -35,8 +35,8 @@ ESP Response Code:
 WiFI Auto Config:
   Connect to WiF error --> Search for ssid : x0[ssid]:[pass]x0, e.g. x0IOTWL3:021015539x0 --> WiFi config Portal
   
-data server URL:    myiotdata.duckdns.org:8080
-firmware URL:       myiotdata.duckdns.org:8080/.fota/ESP8xxxxx.bin
+data server URL:    tbdltee.thddns.net:8895
+firmware URL:       tbdltee.thddns.net:8891/.fota/ESP8xxxxx.bin
 data format:        xxxxy,FWver,arduino Data        y:5-TCP, 6/7:UDP#retry
 response:           1,newKey,[FOTA],0
 =================== end of READ ME ======================= */
