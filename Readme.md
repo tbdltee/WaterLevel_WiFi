@@ -1,6 +1,10 @@
 # Wireless Water Level measurement
 This project is using HC-SR04p ultrasonic to measure the water level and send to internet dashboard (using node-red).
 
+## Current status: Down
+ * ISP changes from 3BB to AIS fibre cause dashboard unreachable from internet.
+ * Linenoify service was shut-down. Plan to migrate to LINE bot for notification. 
+ 
 ## Firmware Upload Status (Arduino/ESP8266)
 
 * IOT001D0001 - 00410/00410/SDK2.2.1-Boot1.7/Core 2.6.3
