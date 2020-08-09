@@ -68,7 +68,7 @@ Configure 3G-WiFi USB dongle for deivceID IOT-xxxxDyyy:
 * DHCP: off
 * 3G dongle IP/Subnet: 192.168.8.1/255.255.255.0
 
-Configure Line Notification:
+Configure Line Notification (de-preciated. Replaced by LINE-bot):
 * Add 'Line Notify' as friend in LINE app.
 * goto https://notify-bot.line.me/th/ and log-in with your LINE id
 * Click menu on  the top-right of the page and select  'My Page'
