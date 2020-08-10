@@ -1,9 +1,9 @@
 # Wireless Water Level measurement
 This project is using HC-SR04p ultrasonic to measure the water level and send to internet dashboard (using node-red).
 
-## Current status: Up but dashboard inaccessible
- * ISP changes from 3BB to AIS fibre cause dashboard unreachable from internet.
- * Linenoify service was shut-down. Plan to migrate to LINE bot for notification. 
+## Current status: up
+ * dashboard url: www.tbdltee.cloudns.cl:8890
+ * Linenoify service was inactive. Plan to migrate to LINE-bot for notification. 
  
 ## Firmware Upload Status (Arduino/ESP8266)
 
@@ -12,6 +12,9 @@ This project is using HC-SR04p ultrasonic to measure the water level and send to
 * IOT001D0003 - 0040E/0040E/SDK2.2.1-Boot1.7/Core 2.6.3
 
 ## Release History
+* 0040G
+  * change server from tbdltee.thddns.net to myiot.tbdltee.cloudns.cl
+  * dashboard url: www.tbdltee.cloudns.cl:8890
 * 0040F
   * improve TCP response handling speed.
   * change iot server from tbdltee.duckddns.org:10722 to tbdltee.thddns.net:8895
